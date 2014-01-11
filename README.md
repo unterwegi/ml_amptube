@@ -21,4 +21,4 @@ Maybe:
 Things to keep in mind
 ======================
 
- - The free edition of Winamp (as of the current version) only plays sound for MP4 videos. FLV videos work fine out of the box. To enable the video playback too, you either uprade to Winamp Pro or you set up a DirectShow decoder to work with Winamp. I will add a guide here how to do this easily in the near future.
+ - The free edition of Winamp (as of version 5.666) only plays sound for MP4 videos. FLV videos work fine out of the box. To enable the video playback too, you either uprade to Winamp Pro or you set up a DirectShow decoder to work with Winamp. I will add a guide here how to do this easily in the near future.
