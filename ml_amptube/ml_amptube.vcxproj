@@ -86,9 +86,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <Text Include="ReadMe.txt" />
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="HttpHandler.h" />
     <ClInclude Include="ml_amptube.h" />
     <ClInclude Include="PluginProperties.h" />
