@@ -12,6 +12,10 @@ typedef void(*DrawFunc)(HWND hwndDlg, int *tab, int tabsize);
 static DrawFunc ml_draw = 0;
 
 static HWND listWnd = 0;
+static const UINT_PTR editTimerId = 1;
+static UINT editTimerElapse = 1000;
+
+static VideoContainer currentSearchResults;
 
 INT_PTR CreatePluginView(INT_PTR treeItem, HWND parent);
 INT_PTR CreatePluginConfigDialog(HWND parent);

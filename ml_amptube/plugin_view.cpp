@@ -25,6 +25,39 @@ INT_PTR CreatePluginConfigDialog(HWND parent)
 	return (INT_PTR)CreateDialog(Plugin.hDllInstance, MAKEINTRESOURCE(IDD_CONFIG_AMPTUBE), parent, ConfigPluginProc);
 }
 
+static void SetThumbnail(int videoIdx, const std::wstring &imgPath)
+{
+	if (!listWnd) return;
+
+	boost::gil::rgb8_image_t image;
+	boost::gil::jpeg_read_image("test.jpg", image);
+
+	BITMAPINFO bi24BitInfo; //populate to match rgb8_image_t
+	memset(&bi24BitInfo, 0, sizeof(BITMAPINFO));
+	bi24BitInfo.bmiHeader.biSize = sizeof(bi24BitInfo.bmiHeader);
+	bi24BitInfo.bmiHeader.biBitCount = 24; // rgb 8 bytes for each component(3)
+	bi24BitInfo.bmiHeader.biCompression = BI_RGB;// rgb = 3 components
+	bi24BitInfo.bmiHeader.biPlanes = 1;
+	bi24BitInfo.bmiHeader.biWidth = image.width;
+	bi24BitInfo.bmiHeader.biHeight = image.height;
+
+	DIBSECTION d;
+	HBITMAP bitmap = CreateDIBSection(NULL, &bi24BitInfo,
+		DIB_RGB_COLORS, 0, 0, 0);
+	int byteCnt = GetObject(bitmap, sizeof(DIBSECTION), &d);
+
+	memcpy(d.dsBm.bmBits, &(image._view[0]), d.dsBmih.biSizeImage);
+
+	DeleteObject(bitmap);
+	
+	LVITEM listItem = { 0 };
+	listItem.mask = LVIF_TEXT;
+	listItem.iItem = videoIdx;
+	listItem.iSubItem = 3;
+	listItem.pszText = const_cast<wchar_t*>(imgPath.c_str());
+	SendMessage(listWnd, LVM_SETITEM, 0, (LPARAM)&listItem);
+}
+
 static void FillResultList(const VideoContainer &searchResults)
 {
 	if (!listWnd) return;
@@ -34,8 +67,12 @@ static void FillResultList(const VideoContainer &searchResults)
 
 	listItem.mask = LVIF_TEXT;
 	listItem.iItem = 0;
-	for (const auto &item : searchResults)
+	currentSearchResults = searchResults;
+	
+	for (auto &item : currentSearchResults)
 	{
+		item.setListItemIdx(listItem.iItem);
+
 		listItem.iSubItem = 0;
 		std::wstring buf = item.getTitle();
 		listItem.pszText = const_cast<wchar_t*>(buf.c_str());
@@ -52,6 +89,8 @@ static void FillResultList(const VideoContainer &searchResults)
 		SendMessage(listWnd, LVM_SETITEM, 0, (LPARAM)&listItem);
 		listItem.iItem += 1;
 	}
+
+	HttpHandler::instance().retrieveThumbnails(currentSearchResults, SetThumbnail);
 }
 
 static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
@@ -86,6 +125,10 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 	lvc.pszText = (LPTSTR)L"ID";
 	lvc.cx = 80;
 	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)2, (LPARAM)&lvc);
+
+	lvc.pszText = (LPTSTR)L"Thumbnail";
+	lvc.cx = 250;
+	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)3, (LPARAM)&lvc);
 
 	/* skin dialog */
 	MLSKINWINDOW sw;
@@ -142,15 +185,42 @@ static BOOL amptube_View_OnSize(HWND hwnd, UINT state, int cx, int cy)
 
 static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD code)
 {
-	wchar_t buffer[512];
-
 	switch (ctrlId)
 	{
+	case IDC_SEARCH:
+		if (code == EN_CHANGE)
+		{
+			//This KillTimer/SetTimer combo + the handler in amptube_View_OnTimer 
+			//causes that a search is only triggered if the user does not press a key
+			//for at least editTimerElapse milliseconds (1 second)
+			//This prevents a search spam which could result in a block from Google for a certain amount of time
+			KillTimer(hwnd, editTimerId);
+			SetTimer(hwnd, editTimerId, editTimerElapse, NULL);
+			return TRUE;
+		}
+		break;
+
 	case IDC_CLEAR:
-		SendMessage(GetDlgItem(hwnd, IDC_SEARCH), WM_GETTEXT, 512, (LPARAM)&buffer);
-		HttpHandler::instance().doSearch(buffer, 1, 10, FillResultList);
+		SetWindowText(GetDlgItem(hwnd, IDC_SEARCH), L"");
+		FillResultList(VideoContainer());
 		return TRUE;
 	}
+	return 0;
+}
+
+static BOOL amptube_View_OnTimer(HWND hwnd, UINT_PTR timerId)
+{
+	wchar_t buffer[512];
+
+	switch (timerId)
+	{
+	case editTimerId:
+		KillTimer(hwnd, editTimerId);
+		GetWindowText(GetDlgItem(hwnd, IDC_SEARCH), buffer, 512);
+		HttpHandler::instance().doSearch(buffer, 1, 10, FillResultList);
+		break;
+	}
+
 	return 0;
 }
 
@@ -180,6 +250,9 @@ INT_PTR CALLBACK MainPluginViewProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 
 	case WM_COMMAND:
 		return amptube_View_OnCommand(hwndDlg, (HWND)lParam, LOWORD(wParam), HIWORD(wParam));
+
+	case WM_TIMER:
+		return amptube_View_OnTimer(hwndDlg, (UINT_PTR) wParam);
 
 	case WM_PAINT:
 	{
@@ -214,7 +287,7 @@ static BOOL amptube_Config_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD
 		return TRUE;
 
 	case IDC_CLEAR_CACHE:
-		//TODO: Remove all .mp4 and .flv files in the current cache path
+		//TODO: Remove all .mp4, .jpg and .flv files in the current cache path
 		return TRUE;
 
 	case IDOK:

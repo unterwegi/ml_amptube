@@ -7,6 +7,8 @@
 ///<param name="searchResults"> A container which contains the informations about the search results.</param>
 typedef void(*SearchCallback)(const VideoContainer &searchResults);
 
+typedef void(*ThumbnailRetrievedCallback)(int videoIdx, const std::wstring &imgPath);
+
 ///<summary>
 /// Handles all HTTP related functionality. Uses the singleton pattern.</summary>
 class HttpHandler
@@ -31,6 +33,8 @@ public:
 	///<param name="maxResult"> Maximum number of returned search results.</param>
 	///<param name="callback"> Function pointer to a callback function, which is called when the search is done.</param>
 	void doSearch(const std::wstring &query, int page, int maxResults, SearchCallback callback) const;
+
+	void retrieveThumbnails(const VideoContainer &videos, ThumbnailRetrievedCallback callback) const;
 private:
 	///<summary>
 	/// The base URL for search operations</summary>

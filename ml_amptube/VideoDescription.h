@@ -15,6 +15,9 @@ public:
 	std::wstring getThumbnailUri() const { return _thumbnailUri; }
 	std::wstring getContentUri() const { return _contentUri; }
 
+	int getListItemIdx() const { return _listItemIdx; }
+	void setListItemIdx(int listItemIdx) { _listItemIdx = listItemIdx; }
+
 private:
 	std::wstring _id;
 	std::wstring _title;
@@ -24,6 +27,8 @@ private:
 	int _duration;
 	std::wstring _thumbnailUri;
 	std::wstring _contentUri;
+
+	int _listItemIdx;
 };
 
 typedef std::deque<VideoDescription> VideoContainer;

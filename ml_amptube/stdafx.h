@@ -17,6 +17,8 @@
 
 // Boost Headers
 #include <boost/filesystem.hpp>
+#include <boost/gil/gil_all.hpp>
+#include <boost/gil/extension/io/jpeg_io.hpp>
 
 // Winamp Headers
 #include <Winamp/wa_ipc.h>
