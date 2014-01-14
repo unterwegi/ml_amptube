@@ -42,6 +42,9 @@
     <ClInclude Include="PluginProperties.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="ResultListWindow.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -91,6 +94,9 @@
     </ClCompile>
     <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_system.error_code.cpp">
       <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="ResultListWindow.cpp">
+      <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
