@@ -1,21 +1,26 @@
 #pragma once
 #include "resource.h"
 #include "HttpHandler.h"
+#include "ResultListWindow.h"
 
-typedef void(*ChildResizeFunc)(HWND, ChildWndResizeItem*, int);
-static ChildResizeFunc ml_childresize_init = 0, ml_childresize_resize = 0;
+typedef int(*GetSkinColorFunc)(int idx);
+extern GetSkinColorFunc ml_get_skin_color;
 
 typedef int(*HookDialogFunc)(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
-static HookDialogFunc ml_hook_dialog_msg = 0;
+extern HookDialogFunc ml_hook_dialog_msg;
 
 typedef void(*DrawFunc)(HWND hwndDlg, int *tab, int tabsize);
-static DrawFunc ml_draw = 0;
+extern DrawFunc ml_draw;
 
-static HWND listWnd = 0;
+typedef void(*ChildResizeFunc)(HWND, ChildWndResizeItem*, int);
+extern ChildResizeFunc ml_childresize_init, ml_childresize_resize;
+
+extern HFONT mainFont;
+
 static const UINT_PTR editTimerId = 1;
 static UINT editTimerElapse = 1000;
 
-static VideoContainer currentSearchResults;
+static ResultListWindow resultList;
 
 INT_PTR CreatePluginView(INT_PTR treeItem, HWND parent);
 INT_PTR CreatePluginConfigDialog(HWND parent);

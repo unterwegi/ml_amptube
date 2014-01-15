@@ -22,9 +22,6 @@ BEGIN
 	CONTROL "Clear Search", IDC_CLEAR, "Button",
 		BS_OWNERDRAW | WS_TABSTOP,
 		153, 2, 61, 11
-	CONTROL "", IDC_LIST, "SysListView32", 
-		LVS_REPORT | LVS_SHOWSELALWAYS | LVS_NOSORTHEADER | WS_TABSTOP,
-		1, 15, 212, 103
 END
 
 /////////////////////////////////////////////////////////////////////////////

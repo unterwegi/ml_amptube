@@ -1,11 +1,12 @@
 #include "stdafx.h"
 #include "HttpHandler.h"
 
-void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults, SearchCallback callback) const
+void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
+	std::function<void(const VideoContainer &results)> finished) const
 {
 	//Call the callback function with an empty result container if the query is empty
 	if (query.empty())
-		callback(VideoContainer());
+		finished(VideoContainer());
 	else
 	{
 		int startIndex = maxResults * (page - 1) + 1;
@@ -18,18 +19,14 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults, 
 		web::http::client::http_client client(_searchUrl);
 
 		client.request(web::http::methods::GET, web::http::uri::encode_uri(requestUri)).then([=](
-			//pplx::task<web::http::http_response> responseTask)
 			web::http::http_response response)
 		{
-			//web::http::http_response response = responseTask.get();
 
 			if (response.status_code() == web::http::status_codes::OK)
 			{
 				response.extract_json().then([=](
-					//pplx::task<web::json::value> jsonTask)
 					web::json::value json)
 				{
-					//web::json::value json = jsonTask.get();
 					web::json::value items = json.get(L"data").get(L"items");
 					VideoContainer videos;
 
@@ -38,27 +35,24 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults, 
 						videos.push_back(VideoDescription(iter.second));
 					}
 
-					callback(videos);
+					finished(videos);
 				});
 			}
 		});
 	}
 }
 
-void HttpHandler::retrieveThumbnails(const VideoContainer &videos, ThumbnailRetrievedCallback callback) const
+void HttpHandler::retrieveThumbnails(const VideoContainer &videos,
+	std::function<void(int videoIdx, const std::wstring &fileName)> thumbnailReady) const
 {
-	//pplx::critical_section cs;
-
 	for (const auto &video : videos)
 	{
 		if (!video.getThumbnailUri().empty())
 		{
 			web::http::client::http_client client(video.getThumbnailUri());
 			client.request(web::http::methods::GET).then([=](
-				//pplx::task<web::http::http_response> responseTask)
 				web::http::http_response response)
 			{
-				//web::http::http_response response = responseTask.get();
 				std::wstring imgPath;
 
 				if (response.status_code() == web::http::status_codes::OK)
@@ -73,7 +67,7 @@ void HttpHandler::retrieveThumbnails(const VideoContainer &videos, ThumbnailRetr
 					fileStream.close();
 				}
 
-				callback(video.getListItemIdx(), imgPath);
+				thumbnailReady(video.getListItemIdx(), imgPath);
 			}).wait();
 		}
 	}

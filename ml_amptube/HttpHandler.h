@@ -3,13 +3,6 @@
 #include "PluginProperties.h"
 
 ///<summary>
-/// callback function which is used in the HttpHandler::doSearch method.</summary>
-///<param name="searchResults"> A container which contains the informations about the search results.</param>
-typedef void(*SearchCallback)(const VideoContainer &searchResults);
-
-typedef void(*ThumbnailRetrievedCallback)(int videoIdx, const std::wstring &imgPath);
-
-///<summary>
 /// Handles all HTTP related functionality. Uses the singleton pattern.</summary>
 class HttpHandler
 {
@@ -31,10 +24,12 @@ public:
 	///<param name="query"> The search query.</param>
 	///<param name="page"> Tells the search, which result page should be returned. Starts with 1.</param>
 	///<param name="maxResult"> Maximum number of returned search results.</param>
-	///<param name="callback"> Function pointer to a callback function, which is called when the search is done.</param>
-	void doSearch(const std::wstring &query, int page, int maxResults, SearchCallback callback) const;
+	///<param name="finished"> callable target (function pointer, lambda, ...), which is called when the search is done.</param>
+	void doSearch(const std::wstring &query, int page, int maxResults,
+		std::function<void(const VideoContainer &results)> finished) const;
 
-	void retrieveThumbnails(const VideoContainer &videos, ThumbnailRetrievedCallback callback) const;
+	void retrieveThumbnails(const VideoContainer &videos,
+		std::function<void(int videoIdx, const std::wstring &fileName)> thumbnailReady) const;
 private:
 	///<summary>
 	/// The base URL for search operations</summary>

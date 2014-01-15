@@ -2,6 +2,12 @@
 #include "plugin_view.h"
 #include "ml_amptube.h"
 
+GetSkinColorFunc ml_get_skin_color = 0;
+HookDialogFunc ml_hook_dialog_msg = 0;
+DrawFunc ml_draw = 0;
+ChildResizeFunc ml_childresize_init = 0, ml_childresize_resize = 0;
+HFONT mainFont = 0;
+
 static ChildWndResizeItem plugin_view_rlist[] =
 {
 	{ IDC_SEARCH, 0x0010 },
@@ -25,110 +31,33 @@ INT_PTR CreatePluginConfigDialog(HWND parent)
 	return (INT_PTR)CreateDialog(Plugin.hDllInstance, MAKEINTRESOURCE(IDD_CONFIG_AMPTUBE), parent, ConfigPluginProc);
 }
 
-static void SetThumbnail(int videoIdx, const std::wstring &imgPath)
-{
-	if (!listWnd) return;
-
-	boost::gil::rgb8_image_t image;
-	boost::gil::jpeg_read_image("test.jpg", image);
-
-	BITMAPINFO bi24BitInfo; //populate to match rgb8_image_t
-	memset(&bi24BitInfo, 0, sizeof(BITMAPINFO));
-	bi24BitInfo.bmiHeader.biSize = sizeof(bi24BitInfo.bmiHeader);
-	bi24BitInfo.bmiHeader.biBitCount = 24; // rgb 8 bytes for each component(3)
-	bi24BitInfo.bmiHeader.biCompression = BI_RGB;// rgb = 3 components
-	bi24BitInfo.bmiHeader.biPlanes = 1;
-	bi24BitInfo.bmiHeader.biWidth = image.width;
-	bi24BitInfo.bmiHeader.biHeight = image.height;
-
-	DIBSECTION d;
-	HBITMAP bitmap = CreateDIBSection(NULL, &bi24BitInfo,
-		DIB_RGB_COLORS, 0, 0, 0);
-	int byteCnt = GetObject(bitmap, sizeof(DIBSECTION), &d);
-
-	memcpy(d.dsBm.bmBits, &(image._view[0]), d.dsBmih.biSizeImage);
-
-	DeleteObject(bitmap);
-	
-	LVITEM listItem = { 0 };
-	listItem.mask = LVIF_TEXT;
-	listItem.iItem = videoIdx;
-	listItem.iSubItem = 3;
-	listItem.pszText = const_cast<wchar_t*>(imgPath.c_str());
-	SendMessage(listWnd, LVM_SETITEM, 0, (LPARAM)&listItem);
-}
-
-static void FillResultList(const VideoContainer &searchResults)
-{
-	if (!listWnd) return;
-
-	LVITEM listItem = { 0 };
-	SendMessage(listWnd, LVM_DELETEALLITEMS, 0, 0);
-
-	listItem.mask = LVIF_TEXT;
-	listItem.iItem = 0;
-	currentSearchResults = searchResults;
-	
-	for (auto &item : currentSearchResults)
-	{
-		item.setListItemIdx(listItem.iItem);
-
-		listItem.iSubItem = 0;
-		std::wstring buf = item.getTitle();
-		listItem.pszText = const_cast<wchar_t*>(buf.c_str());
-		SendMessage(listWnd, LVM_INSERTITEM, 0, (LPARAM)&listItem);
-
-		listItem.iSubItem = 1;
-		buf = item.getUploader();
-		listItem.pszText = const_cast<wchar_t*>(buf.c_str());
-		SendMessage(listWnd, LVM_SETITEM, 0, (LPARAM)&listItem);
-
-		listItem.iSubItem = 2;
-		buf = item.getId();
-		listItem.pszText = const_cast<wchar_t*>(buf.c_str());
-		SendMessage(listWnd, LVM_SETITEM, 0, (LPARAM)&listItem);
-		listItem.iItem += 1;
-	}
-
-	HttpHandler::instance().retrieveThumbnails(currentSearchResults, SetThumbnail);
-}
-
 static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
 	/* gen_ml has some helper functions to deal with skinned dialogs,
 	we're going to grab their function pointers.
 	for definition of magic numbers, see gen_ml/ml.h	 */
-	if (!ml_childresize_init)
+	if (!ml_get_skin_color)
 	{
 		/* skinning helper functions */
+		ml_get_skin_color = (GetSkinColorFunc)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)1, ML_IPC_SKIN_WADLG_GETFUNC);
 		ml_hook_dialog_msg = (HookDialogFunc)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)2, ML_IPC_SKIN_WADLG_GETFUNC);
 		ml_draw = (DrawFunc)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)3, ML_IPC_SKIN_WADLG_GETFUNC);
-
 		/* resizing helper functions */
 		ml_childresize_init = (ChildResizeFunc)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)32, ML_IPC_SKIN_WADLG_GETFUNC);
 		ml_childresize_resize = (ChildResizeFunc)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)33, ML_IPC_SKIN_WADLG_GETFUNC);
+		mainFont = (HFONT)SendMessage(Plugin.hwndLibraryParent, WM_ML_IPC, (WPARAM)66, ML_IPC_SKIN_WADLG_GETFUNC);
 	}
 
-	listWnd = GetDlgItem(hwnd, IDC_LIST);
+	RECT wndRect, btnRect;
+	GetClientRect(hwnd, &wndRect);
+	GetClientRect(GetDlgItem(hwnd, IDC_CLEAR), &btnRect);
+	/* Magic number offsets are determined by try & error to match winamp positions as closely as possible */
+	int xPos = 1,
+		yPos = btnRect.bottom + 6,
+		width = wndRect.right - xPos - 3,
+		height = wndRect.bottom - yPos - btnRect.bottom - 5;
 
-	/* add listview columns */
-	LVCOLUMN lvc = { 0, };
-	lvc.mask = LVCF_TEXT | LVCF_WIDTH;
-	lvc.pszText = (LPTSTR)L"Title";
-	lvc.cx = 250;
-	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)0, (LPARAM)&lvc);
-
-	lvc.pszText = (LPTSTR)L"Uploader";
-	lvc.cx = 150;
-	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)1, (LPARAM)&lvc);
-
-	lvc.pszText = (LPTSTR)L"ID";
-	lvc.cx = 80;
-	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)2, (LPARAM)&lvc);
-
-	lvc.pszText = (LPTSTR)L"Thumbnail";
-	lvc.cx = 250;
-	SendMessageW(listWnd, LVM_INSERTCOLUMNW, (WPARAM)3, (LPARAM)&lvc);
+	resultList.createWindow(hwnd, IDC_LIST, xPos, yPos, width, height);
 
 	/* skin dialog */
 	MLSKINWINDOW sw;
@@ -137,10 +66,10 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 	sw.hwndToSkin = hwnd;
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
 
-	/* skin listview */
-	sw.hwndToSkin = listWnd;
-	sw.skinType = SKINNEDWND_TYPE_LISTVIEW;
-	sw.style = SWLVS_FULLROWSELECT | SWLVS_DOUBLEBUFFER | SWS_USESKINFONT | SWS_USESKINCOLORS | SWS_USESKINCURSORS;
+	/* skin resultList */
+	sw.skinType = SKINNEDWND_TYPE_SCROLLWND;
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
+	sw.hwndToSkin = resultList;
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
 
 	/* skin button */
@@ -202,7 +131,7 @@ static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD c
 
 	case IDC_CLEAR:
 		SetWindowText(GetDlgItem(hwnd, IDC_SEARCH), L"");
-		FillResultList(VideoContainer());
+		resultList.clearList();
 		return TRUE;
 	}
 	return 0;
@@ -217,7 +146,11 @@ static BOOL amptube_View_OnTimer(HWND hwnd, UINT_PTR timerId)
 	case editTimerId:
 		KillTimer(hwnd, editTimerId);
 		GetWindowText(GetDlgItem(hwnd, IDC_SEARCH), buffer, 512);
-		HttpHandler::instance().doSearch(buffer, 1, 10, FillResultList);
+		HttpHandler::instance().doSearch(buffer, 1, 10, [&]
+			(const VideoContainer &results)
+		{
+			resultList.setResults(results);
+		});
 		break;
 	}
 

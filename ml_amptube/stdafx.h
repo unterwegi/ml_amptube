@@ -3,6 +3,7 @@
 #include "targetver.h"
 
 #define WIN32_LEAN_AND_MEAN 
+#define OEMRESOURCE
 // Windows Headers
 #include <windows.h>
 #include <windowsx.h>
@@ -17,8 +18,6 @@
 
 // Boost Headers
 #include <boost/filesystem.hpp>
-#include <boost/gil/gil_all.hpp>
-#include <boost/gil/extension/io/jpeg_io.hpp>
 
 // Winamp Headers
 #include <Winamp/wa_ipc.h>
