@@ -66,29 +66,60 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 	sw.hwndToSkin = hwnd;
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
 
-	/* skin resultList */
+	/* skin result list */
 	sw.skinType = SKINNEDWND_TYPE_SCROLLWND;
 	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
 	sw.hwndToSkin = resultList;
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+	SetFocus(resultList);
 
-	/* skin button */
-	sw.skinType = SKINNEDWND_TYPE_BUTTON;
-	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
-	sw.hwndToSkin = GetDlgItem(hwnd, IDC_CLEAR);
-	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
-
-	/* skin static */
+	/* skin static text */
 	sw.skinType = SKINNEDWND_TYPE_STATIC;
 	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
 	sw.hwndToSkin = GetDlgItem(hwnd, IDC_STATIC);
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+	SetWindowText(sw.hwndToSkin, GetLocalString(IDS_SEARCH).c_str());
 
-	/* skin edit */
+	/* skin search edit */
 	sw.skinType = SKINNEDWND_TYPE_EDIT;
 	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
 	sw.hwndToSkin = GetDlgItem(hwnd, IDC_SEARCH);
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+	SetWindowText(sw.hwndToSkin, resultList.getSearchQuery().c_str());
+
+	/* skin clear button */
+	sw.skinType = SKINNEDWND_TYPE_BUTTON;
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
+	sw.hwndToSkin = GetDlgItem(hwnd, IDC_CLEAR);
+	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+	SetWindowText(sw.hwndToSkin, GetLocalString(IDS_CLEAR_SEARCH).c_str());
+
+	/* skin play options button */
+	sw.skinType = SKINNEDWND_TYPE_BUTTON;
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT | SWBS_SPLITBUTTON;
+	sw.hwndToSkin = GetDlgItem(hwnd, IDC_PLAY_OPTIONS);
+	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+	SetWindowText(sw.hwndToSkin, GetLocalString(IDS_PLAY).c_str());
+
+	/* skin previous results button */
+	sw.skinType = SKINNEDWND_TYPE_BUTTON;
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
+	sw.hwndToSkin = GetDlgItem(hwnd, IDC_PREV_RESULTS);
+	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+
+	/* skin next results button */
+	sw.skinType = SKINNEDWND_TYPE_BUTTON;
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
+	sw.hwndToSkin = GetDlgItem(hwnd, IDC_NEXT_RESULTS);
+	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
+
+	/* fix the z-ordering for correct dialog keyboard navigation*/
+	SetWindowPos(GetDlgItem(hwnd, IDC_PLAY_OPTIONS), resultList,
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	SetWindowPos(GetDlgItem(hwnd, IDC_PREV_RESULTS), GetDlgItem(hwnd, IDC_PLAY_OPTIONS),
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	SetWindowPos(GetDlgItem(hwnd, IDC_NEXT_RESULTS), GetDlgItem(hwnd, IDC_PREV_RESULTS),
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 
 	ml_childresize_init(hwnd, plugin_view_rlist, sizeof(plugin_view_rlist) / sizeof(plugin_view_rlist[0]));
 
@@ -101,13 +132,43 @@ static BOOL amptube_View_OnSize(HWND hwnd, UINT state, int cx, int cy)
 	{
 		RECT parentRect, buttonRect;
 		ml_childresize_resize(hwnd, plugin_view_rlist, sizeof(plugin_view_rlist) / sizeof(plugin_view_rlist[0]));
-		HWND buttonHwnd = GetDlgItem(hwnd, IDC_CLEAR);
-		GetWindowRect(buttonHwnd, &buttonRect);
-		MapWindowPoints(buttonHwnd, hwnd, (LPPOINT) &buttonRect, 2);
-		int buttonWidth = buttonRect.right - buttonRect.left;
 		GetClientRect(hwnd, &parentRect);
+
+		/* move the clear button to the right edge*/
+		HWND buttonHwnd = GetDlgItem(hwnd, IDC_CLEAR);	
+		GetWindowRect(buttonHwnd, &buttonRect);
+		MapWindowPoints(0, hwnd, (LPPOINT) &buttonRect, 2);
+		int buttonWidth = buttonRect.right - buttonRect.left;
 		SetWindowPos(buttonHwnd, 0,
-			parentRect.right - buttonWidth - 2, 2, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+			parentRect.right - buttonWidth - 2, buttonRect.top, 0, 0,
+			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+		/* move the play options button to the bottom edge*/
+		buttonHwnd = GetDlgItem(hwnd, IDC_PLAY_OPTIONS);
+		GetWindowRect(buttonHwnd, &buttonRect);
+		MapWindowPoints(0, hwnd, (LPPOINT)&buttonRect, 2);
+		int buttonHeight = buttonRect.bottom - buttonRect.top;
+		SetWindowPos(buttonHwnd, 0,
+			buttonRect.left, parentRect.bottom - buttonHeight, 0, 0,
+			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+		/* move the previous results button to the bottom edge*/
+		buttonHwnd = GetDlgItem(hwnd, IDC_PREV_RESULTS);
+		GetWindowRect(buttonHwnd, &buttonRect);
+		MapWindowPoints(0, hwnd, (LPPOINT)&buttonRect, 2);
+		buttonHeight = buttonRect.bottom - buttonRect.top;
+		SetWindowPos(buttonHwnd, 0,
+			buttonRect.left, parentRect.bottom - buttonHeight, 0, 0,
+			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+		/* move the next results button to the bottom edge*/
+		buttonHwnd = GetDlgItem(hwnd, IDC_NEXT_RESULTS);
+		GetWindowRect(buttonHwnd, &buttonRect);
+		MapWindowPoints(0, hwnd, (LPPOINT)&buttonRect, 2);
+		buttonHeight = buttonRect.bottom - buttonRect.top;
+		SetWindowPos(buttonHwnd, 0,
+			buttonRect.left, parentRect.bottom - buttonHeight, 0, 0,
+			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 	}
 	return FALSE;
 }
@@ -133,6 +194,17 @@ static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD c
 		SetWindowText(GetDlgItem(hwnd, IDC_SEARCH), L"");
 		resultList.clearList();
 		return TRUE;
+
+	case IDC_PREV_RESULTS:
+		if (resultList.getCurrentPage() <= 2)
+			EnableWindow(GetDlgItem(hwnd, IDC_PREV_RESULTS), FALSE);
+
+		resultList.prevResultPage();
+		return TRUE;
+
+	case IDC_NEXT_RESULTS:
+		EnableWindow(GetDlgItem(hwnd, IDC_PREV_RESULTS), TRUE);
+		resultList.nextResultPage();
 	}
 	return 0;
 }
@@ -146,12 +218,8 @@ static BOOL amptube_View_OnTimer(HWND hwnd, UINT_PTR timerId)
 	case editTimerId:
 		KillTimer(hwnd, editTimerId);
 		GetWindowText(GetDlgItem(hwnd, IDC_SEARCH), buffer, 512);
-		HttpHandler::instance().doSearch(buffer, 1, 10, [&]
-			(const VideoContainer &results)
-		{
-			resultList.setResults(results);
-		});
-		break;
+		EnableWindow(GetDlgItem(hwnd, IDC_PREV_RESULTS), FALSE);
+		resultList.startSearch(buffer);
 	}
 
 	return 0;
@@ -193,6 +261,13 @@ INT_PTR CALLBACK MainPluginViewProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 		 ml_draw(hwndDlg, tab, sizeof(tab) / sizeof(tab[0]));
 		 return 0;
 	}
+
+	case WM_SETFONT:
+		mainFont = (HFONT)wParam;
+		return 0;
+
+	case WM_GETFONT:
+		return (INT_PTR) mainFont;
 
 	case WM_DESTROY:
 		return amptube_View_OnDestroy(hwndDlg);

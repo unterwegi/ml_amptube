@@ -35,11 +35,17 @@ void ResultListWindow::unregisterClass()
 }
 
 ResultListWindow::ResultListWindow()
-	: _hwnd(0), _hwndParent(0), _mainFont(0),
-	_xPos(0), _yPos(0),	_width(0), _height(0), _controlId(0)
+	: _hwnd(0), _hwndParent(0), _mainFont(0), _controlId(0), _resultPage(1),
+	_xPos(0), _yPos(0),	_width(0), _height(0),
+	_scrollDrawXOffset(0), _scrollDrawYOffset(0)
 {
 	++_instanceCnt;
-	_itemHeight = 50;
+
+	_itemHeight = 130;
+	_minItemWidth = 400;
+	_thumbnailPadding = 15;
+	_thumbnailWidth = 150;
+	_thumbnailHeight = _itemHeight - _thumbnailPadding * 2;
 }
 
 ResultListWindow::~ResultListWindow()
@@ -81,45 +87,82 @@ void ResultListWindow::destroyWindow()
 		DestroyWindow(_hwnd);
 }
 
-void ResultListWindow::setResults(const VideoContainer &results)
+void ResultListWindow::startSearch(const std::wstring &query)
 {
-	_results = results;
-
-	HttpHandler::instance().retrieveThumbnails(_results, [=]
-		(int videoIdx, const std::wstring &fileName)
-	{
-		/*boost::gil::rgb8_image_t image;
-		boost::gil::jpeg_read_image("test.jpg", image);
-
-		BITMAPINFO bi24BitInfo; //populate to match rgb8_image_t
-		memset(&bi24BitInfo, 0, sizeof(BITMAPINFO));
-		bi24BitInfo.bmiHeader.biSize = sizeof(bi24BitInfo.bmiHeader);
-		bi24BitInfo.bmiHeader.biBitCount = 24; // rgb 8 bytes for each component(3)
-		bi24BitInfo.bmiHeader.biCompression = BI_RGB;// rgb = 3 components
-		bi24BitInfo.bmiHeader.biPlanes = 1;
-		bi24BitInfo.bmiHeader.biWidth = image.width;
-		bi24BitInfo.bmiHeader.biHeight = image.height;
-
-		DIBSECTION d;
-		HBITMAP bitmap = CreateDIBSection(NULL, &bi24BitInfo,
-		DIB_RGB_COLORS, 0, 0, 0);
-		int byteCnt = GetObject(bitmap, sizeof(DIBSECTION), &d);
-
-		memcpy(d.dsBm.bmBits, &(image._view[0]), d.dsBmih.biSizeImage);
-
-		DeleteObject(bitmap);*/
-		_thumbnails.insert(ThumbnailPair(videoIdx, 0));
-	});
-	triggerRedraw();
+	_resultPage = 1;
+	_searchQuery = query;
+	if (!_searchQuery.empty())
+		doSearch();
 }
 
-VideoContainer ResultListWindow::getResults() const
-{ 
-	return _results;
+void ResultListWindow::nextResultPage()
+{
+	if (!_searchQuery.empty())
+	{
+		++_resultPage;
+		doSearch();
+	}
+}
+
+void ResultListWindow::prevResultPage()
+{
+	if (!_searchQuery.empty() && _resultPage > 1)
+	{
+		--_resultPage;
+		doSearch();
+	}
+}
+
+std::wstring ResultListWindow::getSearchQuery() const
+{
+	return _searchQuery;
+}
+
+int ResultListWindow::getCurrentPage() const
+{
+	return _resultPage;
+}
+
+void ResultListWindow::doSearch()
+{
+	HttpHandler::instance().doSearch(_searchQuery, _resultPage, MaxResults, [&]
+		(const VideoContainer &results)
+	{
+		_results = results;
+
+		HttpHandler::instance().retrieveThumbnails(_results, [=]
+			(int videoIdx, const std::wstring &fileName)
+		{
+			/*boost::gil::rgb8_image_t image;
+			boost::gil::jpeg_read_image("test.jpg", image);
+
+			BITMAPINFO bi24BitInfo; //populate to match rgb8_image_t
+			memset(&bi24BitInfo, 0, sizeof(BITMAPINFO));
+			bi24BitInfo.bmiHeader.biSize = sizeof(bi24BitInfo.bmiHeader);
+			bi24BitInfo.bmiHeader.biBitCount = 24; // rgb 8 bytes for each component(3)
+			bi24BitInfo.bmiHeader.biCompression = BI_RGB;// rgb = 3 components
+			bi24BitInfo.bmiHeader.biPlanes = 1;
+			bi24BitInfo.bmiHeader.biWidth = image.width;
+			bi24BitInfo.bmiHeader.biHeight = image.height;
+
+			DIBSECTION d;
+			HBITMAP bitmap = CreateDIBSection(NULL, &bi24BitInfo,
+			DIB_RGB_COLORS, 0, 0, 0);
+			int byteCnt = GetObject(bitmap, sizeof(DIBSECTION), &d);
+
+			memcpy(d.dsBm.bmBits, &(image._view[0]), d.dsBmih.biSizeImage);
+
+			DeleteObject(bitmap);*/
+			_thumbnails.insert(ThumbnailPair(videoIdx, 0));
+		});
+
+		triggerRedraw();
+	});
 }
 
 void ResultListWindow::clearList()
 {
+	_searchQuery.clear();
 	_results.clear();
 	for (auto &bitmap : _thumbnails)
 	{
@@ -147,6 +190,7 @@ void ResultListWindow::fillRect(HDC hdc, LPRECT rect, COLORREF color)
 
 LRESULT ResultListWindow::onCreate(HWND hwnd, LPCREATESTRUCT createStruct)
 {
+	_mainFont = (HFONT) SendMessage(_hwndParent, WM_GETFONT, 0, 0);
 	_hwnd = hwnd;
 	return 0;
 }
@@ -176,7 +220,8 @@ void ResultListWindow::onPaint(HDC hdc)
 	itemRect.left = 5;
 	itemRect.bottom = _itemHeight;
 	SetBkMode(hdc, TRANSPARENT);
-	SelectObject(hdc, mainFont);
+	if (_mainFont)
+		SelectObject(hdc, _mainFont);
 
 	int itemIdx = 0;
 	for (const auto &video : _results)
@@ -219,11 +264,9 @@ LRESULT CALLBACK ResultListWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			return 0;
 
 		case WM_SETFONT:
-			if (wParam)
-				classInstance->_mainFont = (HFONT)wParam;
-
+			classInstance->_mainFont = (HFONT)wParam;
 			if (LOWORD(lParam) != 0)
-				InvalidateRect(hwnd, NULL, FALSE);
+				classInstance->triggerRedraw();
 			return 0;
 
 		case WM_GETFONT:
