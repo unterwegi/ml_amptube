@@ -42,33 +42,39 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 	}
 }
 
-void HttpHandler::retrieveThumbnails(const VideoContainer &videos,
-	std::function<void(int videoIdx, const std::wstring &fileName)> thumbnailReady) const
+pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
+	std::function<void(const std::wstring &videoId, const std::wstring &fileName)> thumbnailReady) const
 {
-	for (const auto &video : videos)
+	return pplx::create_task([=]() -> void
 	{
-		if (!video.getThumbnailUri().empty())
+		for (const auto &video : videos)
 		{
-			web::http::client::http_client client(video.getThumbnailUri());
-			client.request(web::http::methods::GET).then([=](
-				web::http::http_response response)
+			if (!video.getThumbnailUri().empty())
 			{
-				std::wstring imgPath;
+				std::wstring imgPath = PluginProperties::instance().getProperty(L"cachePath")
+					+ L"\\" + video.getId() + L".jpg";
 
-				if (response.status_code() == web::http::status_codes::OK)
-				{
-					imgPath = PluginProperties::instance().getProperty(L"cachePath")
-						+ L"\\" + video.getId() + L".jpg";
-					concurrency::streams::container_buffer<std::string> buffer;
-					response.body().read_to_end(buffer).wait();
-					std::ofstream fileStream;
-					fileStream.open(imgPath, std::ios::out | std::ios::trunc | std::ios::binary);
-					fileStream << buffer.collection();
-					fileStream.close();
-				}
-
-				thumbnailReady(video.getListItemIdx(), imgPath);
-			}).wait();
+				getRemoteData(video.getThumbnailUri(), imgPath).wait();
+				thumbnailReady(video.getId(), imgPath);
+			}
 		}
-	}
+	});
+}
+
+pplx::task<void> HttpHandler::getRemoteData(const std::wstring &uri, const std::wstring &fileName) const
+{
+	web::http::client::http_client client(uri);
+	return client.request(web::http::methods::GET).then([=](
+		web::http::http_response response)
+	{
+		if (response.status_code() == web::http::status_codes::OK)
+		{
+			concurrency::streams::container_buffer<std::string> buffer;
+			response.body().read_to_end(buffer).wait();
+			std::ofstream fileStream;
+			fileStream.open(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
+			fileStream << buffer.collection();
+			fileStream.close();
+		}
+	});
 }

@@ -86,6 +86,7 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 	sw.hwndToSkin = GetDlgItem(hwnd, IDC_SEARCH);
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
 	SetWindowText(sw.hwndToSkin, resultList.getSearchQuery().c_str());
+	KillTimer(hwnd, editTimerId);
 
 	/* skin clear button */
 	sw.skinType = SKINNEDWND_TYPE_BUTTON;
@@ -114,6 +115,12 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
 
 	/* fix the z-ordering for correct dialog keyboard navigation*/
+	SetWindowPos(GetDlgItem(hwnd, IDC_SEARCH), Plugin.hwndLibraryParent,
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	SetWindowPos(GetDlgItem(hwnd, IDC_CLEAR), GetDlgItem(hwnd, IDC_SEARCH),
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+	SetWindowPos(resultList, GetDlgItem(hwnd, IDC_CLEAR),
+		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	SetWindowPos(GetDlgItem(hwnd, IDC_PLAY_OPTIONS), resultList,
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	SetWindowPos(GetDlgItem(hwnd, IDC_PREV_RESULTS), GetDlgItem(hwnd, IDC_PLAY_OPTIONS),
@@ -183,7 +190,8 @@ static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD c
 			//This KillTimer/SetTimer combo + the handler in amptube_View_OnTimer 
 			//causes that a search is only triggered if the user does not press a key
 			//for at least editTimerElapse milliseconds (1 second)
-			//This prevents a search spam which could result in a block from Google for a certain amount of time
+			//This prevents a spam of search requests to Google which could result
+			//in a block from them for a certain amount of time
 			KillTimer(hwnd, editTimerId);
 			SetTimer(hwnd, editTimerId, editTimerElapse, NULL);
 			return TRUE;
@@ -233,7 +241,7 @@ static BOOL amptube_View_OnDestroy(HWND hwnd)
 INT_PTR CALLBACK MainPluginViewProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	/* first, ask the dialog skinning system if it wants to do anything with the message
-	the function pointer gets set during WM_INITDIALOG so might be NULL for the first few messages */
+	the function pointer gets set during WM_INITDIALOG so it might be NULL for the first few messages */
 	if (ml_hook_dialog_msg)
 	{
 		INT_PTR a = ml_hook_dialog_msg(hwndDlg, uMsg, wParam, lParam);

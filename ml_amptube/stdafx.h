@@ -4,6 +4,7 @@
 
 #define WIN32_LEAN_AND_MEAN 
 #define OEMRESOURCE
+#define NOMINMAX
 // Windows Headers
 #include <windows.h>
 #include <windowsx.h>
@@ -12,6 +13,8 @@
 #include <iostream>
 #include <string>
 #include <codecvt>
+#include <algorithm>
+#include <future>
 
 // C++ REST SDK Headers
 #include <cpprest/http_client.h>

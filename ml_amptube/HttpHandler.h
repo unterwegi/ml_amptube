@@ -28,8 +28,10 @@ public:
 	void doSearch(const std::wstring &query, int page, int maxResults,
 		std::function<void(const VideoContainer &results)> finished) const;
 
-	void retrieveThumbnails(const VideoContainer &videos,
-		std::function<void(int videoIdx, const std::wstring &fileName)> thumbnailReady) const;
+	pplx::task<void> retrieveThumbnails(const VideoContainer &videos,
+		std::function<void(const std::wstring &videoId, const std::wstring &fileName)> thumbnailReady) const;
+
+	pplx::task<void> getRemoteData(const std::wstring &uri, const std::wstring &fileName) const;
 private:
 	///<summary>
 	/// The base URL for search operations</summary>
