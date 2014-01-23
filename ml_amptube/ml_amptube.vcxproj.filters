@@ -45,6 +45,9 @@
     <ClInclude Include="ResultListWindow.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="jpgd.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -96,6 +99,9 @@
       <Filter>Quelldateien\boost</Filter>
     </ClCompile>
     <ClCompile Include="ResultListWindow.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="jpgd.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

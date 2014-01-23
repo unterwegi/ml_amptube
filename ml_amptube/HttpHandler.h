@@ -29,9 +29,9 @@ public:
 		std::function<void(const VideoContainer &results)> finished) const;
 
 	pplx::task<void> retrieveThumbnails(const VideoContainer &videos,
-		std::function<void(const std::wstring &videoId, const std::wstring &fileName)> thumbnailReady) const;
+		std::function<void(const std::wstring &videoId, const std::string &data)> thumbnailReady) const;
 
-	pplx::task<void> getRemoteData(const std::wstring &uri, const std::wstring &fileName) const;
+	pplx::task<pplx::streams::istream> getRemoteData(const std::wstring &uri) const;
 private:
 	///<summary>
 	/// The base URL for search operations</summary>

@@ -43,7 +43,7 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 }
 
 pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
-	std::function<void(const std::wstring &videoId, const std::wstring &fileName)> thumbnailReady) const
+	std::function<void(const std::wstring &videoId, const std::string &data)> thumbnailReady) const
 {
 	return pplx::create_task([=]() -> void
 	{
@@ -51,30 +51,29 @@ pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
 		{
 			if (!video.getThumbnailUri().empty())
 			{
-				std::wstring imgPath = PluginProperties::instance().getProperty(L"cachePath")
-					+ L"\\" + video.getId() + L".jpg";
-
-				getRemoteData(video.getThumbnailUri(), imgPath).wait();
-				thumbnailReady(video.getId(), imgPath);
+				getRemoteData(video.getThumbnailUri()).then([=](
+					pplx::streams::istream responseData)
+				{
+					concurrency::streams::container_buffer<std::string> buffer;
+					responseData.read_to_end(buffer).wait();
+					thumbnailReady(video.getId(), buffer.collection());
+				}).wait();				
 			}
 		}
 	});
 }
 
-pplx::task<void> HttpHandler::getRemoteData(const std::wstring &uri, const std::wstring &fileName) const
+pplx::task<pplx::streams::istream> HttpHandler::getRemoteData(const std::wstring &uri) const
 {
 	web::http::client::http_client client(uri);
 	return client.request(web::http::methods::GET).then([=](
-		web::http::http_response response)
+		web::http::http_response response) -> pplx::streams::istream
 	{
 		if (response.status_code() == web::http::status_codes::OK)
 		{
-			concurrency::streams::container_buffer<std::string> buffer;
-			response.body().read_to_end(buffer).wait();
-			std::ofstream fileStream;
-			fileStream.open(fileName, std::ios::out | std::ios::trunc | std::ios::binary);
-			fileStream << buffer.collection();
-			fileStream.close();
+			return response.body();
 		}
+		else
+			return pplx::streams::istream();
 	});
 }

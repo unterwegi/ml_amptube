@@ -19,3 +19,8 @@ VideoDescription::VideoDescription(const web::json::value &input)
 		_contentUri = input.get(L"content").get(L"5").as_string();
 }
 
+bool VideoDescription::isCached()
+{
+	return false;
+}
+

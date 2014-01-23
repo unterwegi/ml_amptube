@@ -24,9 +24,18 @@ public:
 	int getCurrentPage() const;
 	void clearList();
 private:
-	typedef std::map<std::wstring, HBITMAP>	ThumbnailMap;
-	typedef ThumbnailMap::value_type		ThumbnailPair;
-	typedef VideoContainer::size_type		SizeType;
+	struct ThumbnailData
+	{
+		HBITMAP handle;
+		unsigned char *bitmapData;
+		BITMAPINFO bitmapInfo;
+		int width;
+		int height;
+	};
+
+	typedef std::map<std::wstring, ThumbnailData>	ThumbnailMap;
+	typedef ThumbnailMap::value_type				ThumbnailPair;
+	typedef VideoContainer::size_type				SizeType;
 
 	static int _instanceCnt;
 	static const wchar_t *_wndClassName;
@@ -34,6 +43,10 @@ private:
 	HFONT _mainFont;
 	int _controlId;
 	bool _hasFocus;
+
+	HDC _bufferDc;
+	HBITMAP _bufferBitmap;
+	int _bufferDcInitState;
 
 	std::wstring _searchQuery;
 	int _resultPage;
@@ -59,10 +72,14 @@ private:
 
 	void fillRect(HDC hdc, LPRECT rect, COLORREF color);
 
+	void destroyBufferDc();
+	void rebuildBufferDc();
+
 	SizeType getItemsPerPage();
 	SizeType getLastItemIdx();
 	void setVScrollBarInfo();
 
+	RECT getItemRect(SizeType itemIdx);
 	SizeType getItemIdxForPosition(POINT position);
 	
 	LRESULT onCreate(HWND hwnd, const CREATESTRUCT &createStruct);
@@ -72,6 +89,7 @@ private:
 	void onLMouseButtonUp(WORD keys, POINT &cursorPos);
 	void onLMouseButtonDblClk(WORD keys, POINT &cursorPos);
 	void onKeyDown(DWORD vKey);
-	void onPaint(HDC hdc, RECT &updateRect);
+	void onPaint(HDC hdc);
+	void onNcDestroy();
 };
 

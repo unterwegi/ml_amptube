@@ -43,6 +43,8 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <LinkIncremental>true</LinkIncremental>
     <IncludePath>$(ProjectDir)\winamp_sdk;$(ProjectDir)\winamp_sdk\Wasabi;$(IncludePath)</IncludePath>
+    <Linkage-libjpeg>
+    </Linkage-libjpeg>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>false</LinkIncremental>
@@ -55,7 +57,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;_USRDLL;ML_AMPTUBE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalOptions>/Zm128 %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/Zm140 %(AdditionalOptions)</AdditionalOptions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -87,6 +89,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="HttpHandler.h" />
+    <ClInclude Include="jpgd.h" />
     <ClInclude Include="ml_amptube.h" />
     <ClInclude Include="PluginProperties.h" />
     <ClInclude Include="plugin_view.h" />
@@ -106,6 +109,9 @@
       </PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="HttpHandler.cpp" />
+    <ClCompile Include="jpgd.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="ml_amptube.cpp" />
     <ClCompile Include="PluginProperties.cpp" />
     <ClCompile Include="plugin_view.cpp" />
@@ -128,7 +134,5 @@
     <Import Project="..\packages\boost_system.1.55.0.16\build\native\boost_system.targets" Condition="Exists('..\packages\boost_system.1.55.0.16\build\native\boost_system.targets')" />
     <Import Project="..\packages\boost_filesystem.1.55.0.16\build\native\boost_filesystem.targets" Condition="Exists('..\packages\boost_filesystem.1.55.0.16\build\native\boost_filesystem.targets')" />
     <Import Project="..\packages\cpprestsdk.1.4.0\build\native\cpprestsdk.targets" Condition="Exists('..\packages\cpprestsdk.1.4.0\build\native\cpprestsdk.targets')" />
-    <Import Project="..\packages\libjpeg.redist.9.0.1.3\build\native\libjpeg.redist.targets" Condition="Exists('..\packages\libjpeg.redist.9.0.1.3\build\native\libjpeg.redist.targets')" />
-    <Import Project="..\packages\libjpeg.9.0.1.3\build\native\libjpeg.targets" Condition="Exists('..\packages\libjpeg.9.0.1.3\build\native\libjpeg.targets')" />
   </ImportGroup>
 </Project>

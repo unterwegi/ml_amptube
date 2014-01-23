@@ -14,7 +14,8 @@ public:
 	int getDuration() const { return _duration; }
 	std::wstring getThumbnailUri() const { return _thumbnailUri; }
 	std::wstring getContentUri() const { return _contentUri; }
-
+	
+	bool isCached();
 private:
 	std::wstring _id;
 	std::wstring _title;

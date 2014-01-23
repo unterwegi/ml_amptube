@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "ResultListWindow.h"
 #include "ml_amptube.h"
+#include "jpgd.h"
 
 int ResultListWindow::_instanceCnt = 0;
 const wchar_t *ResultListWindow::_wndClassName = L"AmptubeResultListWindow";
@@ -36,6 +37,7 @@ void ResultListWindow::unregisterClass()
 
 ResultListWindow::ResultListWindow()
 	: _hwnd(0), _hwndParent(0), _mainFont(0), _controlId(0), _hasFocus(false),
+	_bufferDc(0), _bufferBitmap(0), _bufferDcInitState(0),
 	_resultPage(1),	_xPos(0), _yPos(0), _width(0), _height(0),
 	_firstItemIdx(0), _selectedItemIdx(INT_MAX)
 {
@@ -55,6 +57,8 @@ ResultListWindow::~ResultListWindow()
 
 	if (_hwnd)
 		DestroyWindow(_hwnd);
+
+	destroyBufferDc();
 
 	--_instanceCnt;
 
@@ -136,29 +140,52 @@ void ResultListWindow::doSearch()
 		_results = results;
 
 		HttpHandler::instance().retrieveThumbnails(_results, [=]
-			(const std::wstring &videoId, const std::wstring &fileName)
+			(const std::wstring &videoId, const std::string &data)
 		{
-			/*boost::gil::rgb8_image_t image;
-			boost::gil::jpeg_read_image("test.jpg", image);
+			const int reqComps = 3; // request RGB image
+			int imgWidth = 0, imgHeight = 0, actComps = 0;
+			unsigned char *imageData = jpgd::decompress_jpeg_image_from_memory(
+				reinterpret_cast<const unsigned char*>(data.c_str()), data.size(),
+				&imgWidth, &imgHeight, &actComps, reqComps);
 
-			BITMAPINFO bi24BitInfo; //populate to match rgb8_image_t
-			memset(&bi24BitInfo, 0, sizeof(BITMAPINFO));
-			bi24BitInfo.bmiHeader.biSize = sizeof(bi24BitInfo.bmiHeader);
-			bi24BitInfo.bmiHeader.biBitCount = 24; // rgb 8 bytes for each component(3)
-			bi24BitInfo.bmiHeader.biCompression = BI_RGB;// rgb = 3 components
-			bi24BitInfo.bmiHeader.biPlanes = 1;
-			bi24BitInfo.bmiHeader.biWidth = image.width;
-			bi24BitInfo.bmiHeader.biHeight = image.height;
+			int imgByteCount = imgWidth * imgHeight * 3;
 
-			DIBSECTION d;
-			HBITMAP bitmap = CreateDIBSection(NULL, &bi24BitInfo,
-			DIB_RGB_COLORS, 0, 0, 0);
-			int byteCnt = GetObject(bitmap, sizeof(DIBSECTION), &d);
+			//swap red an blue bytes for each pixel
+			for (int imageIdx = 0; imageIdx < imgByteCount; imageIdx += 3)
+			{
+				unsigned char tempByte = imageData[imageIdx];
+				imageData[imageIdx] = imageData[imageIdx + 2];
+				imageData[imageIdx + 2] = tempByte;
+			}
 
-			memcpy(d.dsBm.bmBits, &(image._view[0]), d.dsBmih.biSizeImage);
+			ThumbnailData thumbnailData = { 0 };
+			thumbnailData.width = imgWidth;
+			thumbnailData.height = imgHeight;
+			thumbnailData.bitmapInfo.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+			thumbnailData.bitmapInfo.bmiHeader.biBitCount = 24;
+			thumbnailData.bitmapInfo.bmiHeader.biCompression = BI_RGB;
+			thumbnailData.bitmapInfo.bmiHeader.biPlanes = 1;
+			thumbnailData.bitmapInfo.bmiHeader.biWidth = imgWidth;
+			//make the height negative so that the bitmap becomes
+			//a top-down one (otherwise it will be drawn upside-down)
+			thumbnailData.bitmapInfo.bmiHeader.biHeight = -imgHeight;
 
-			DeleteObject(bitmap);*/
-			_thumbnails.insert(ThumbnailPair(videoId, 0));
+			int scanSize = imgWidth * 3;
+
+			//make the size of a bitmap scan line 4-byte aligned
+			if (scanSize % 4 > 0)
+				scanSize = scanSize + 4 - scanSize % 4;
+
+			thumbnailData.bitmapInfo.bmiHeader.biSizeImage = imgHeight * scanSize;
+			
+			thumbnailData.handle = CreateDIBSection(NULL, &thumbnailData.bitmapInfo,
+				DIB_RGB_COLORS, (void **) &thumbnailData.bitmapData, 0, 0);
+
+			for (int idx = 0; idx < imgHeight; ++idx)
+				memcpy(&(thumbnailData.bitmapData[scanSize * idx]), &imageData[imgWidth * 3 * idx], imgWidth * 3);
+
+			free(imageData);
+			_thumbnails.insert(ThumbnailPair(videoId, thumbnailData));
 			triggerRedraw();
 		});
 
@@ -177,9 +204,9 @@ void ResultListWindow::clearList()
 
 void ResultListWindow::deleteThumbnails()
 {
-	for (auto &bitmap : _thumbnails)
+	for (auto &thumbnail : _thumbnails)
 	{
-		DeleteObject(bitmap.second);
+		DeleteObject(thumbnail.second.handle);
 	}
 	_thumbnails.clear();
 }
@@ -197,6 +224,31 @@ void ResultListWindow::fillRect(HDC hdc, LPRECT rect, COLORREF color)
 	ExtTextOut(hdc, 0, 0, ETO_OPAQUE, rect, 0, 0, 0);
 	SetBkMode(hdc, oldMode);
 	SetBkColor(hdc, oldColor);
+}
+
+void ResultListWindow::destroyBufferDc()
+{
+	if (_bufferDc)
+	{
+		RestoreDC(_bufferDc, _bufferDcInitState);
+		DeleteDC(_bufferDc);
+		DeleteObject(_bufferBitmap);
+		_bufferDc = 0;
+		_bufferBitmap = 0;
+		_bufferDcInitState = 0;
+	}
+}
+
+void ResultListWindow::rebuildBufferDc()
+{
+	destroyBufferDc();
+
+	HDC windowDc = GetDC(_hwnd);
+	_bufferDc = CreateCompatibleDC(windowDc);
+	_bufferDcInitState = SaveDC(_bufferDc);
+	_bufferBitmap = CreateCompatibleBitmap(windowDc, _width, _height);
+	SelectObject(_bufferDc, _bufferBitmap);
+	ReleaseDC(_hwnd, windowDc);
 }
 
 ResultListWindow::SizeType ResultListWindow::getItemsPerPage()
@@ -226,31 +278,32 @@ void ResultListWindow::setVScrollBarInfo()
 	triggerRedraw();
 }
 
+RECT ResultListWindow::getItemRect(SizeType itemIdx)
+{
+	RECT itemRect;
+	itemRect.left = 0;
+	itemRect.right = _width;
+	itemRect.top = _itemHeight * ((int) itemIdx - _firstItemIdx);
+	itemRect.bottom = itemRect.top + _itemHeight;
+	return itemRect;
+}
+
 ResultListWindow::SizeType ResultListWindow::getItemIdxForPosition(POINT position)
 {
 	SizeType resultItem = INT_MAX;
-	RECT itemRect;
-	GetClientRect(_hwnd, &itemRect);
-	itemRect.bottom = _itemHeight;
 
 	for (SizeType itemIdx = 0; itemIdx < _results.size(); ++itemIdx)
 	{
-		if (itemIdx >= _firstItemIdx)
-		{
-			if (PtInRect(&itemRect, position))
-			{
-				resultItem = itemIdx;
-				break;
-			}
-			else
-			{
-				itemRect.top = itemRect.bottom;
-				itemRect.bottom += _itemHeight;
-			}
-		}
+		RECT itemRect = getItemRect(itemIdx);
 
 		if (itemRect.top >= _height)
 			break;
+
+		if (PtInRect(&itemRect, position))
+		{
+			resultItem = itemIdx;
+			break;
+		}		
 	}
 
 	return resultItem;
@@ -270,6 +323,8 @@ void ResultListWindow::onWindowPosChanged(const WINDOWPOS &windowPos)
 	_xPos = windowPos.y;
 	_width = windowPos.cx;
 	_height = windowPos.cy;
+
+	rebuildBufferDc();
 
 	setVScrollBarInfo();
 }
@@ -340,7 +395,9 @@ void ResultListWindow::onLMouseButtonUp(WORD keys, POINT &cursorPos)
 	_selectedItemIdx = getItemIdxForPosition(cursorPos);
 
 	if (SetFocus(_hwnd) == _hwnd && oldSelection != _selectedItemIdx)
+	{
 		triggerRedraw();
+	}
 }
 
 void ResultListWindow::onLMouseButtonDblClk(WORD keys, POINT &cursorPos)
@@ -408,7 +465,7 @@ void ResultListWindow::onKeyDown(DWORD vKey)
 	}
 }
 
-void ResultListWindow::onPaint(HDC hdc, RECT &updateRect)
+void ResultListWindow::onPaint(HDC hdc)
 {
 	const ThumbnailMap tempThumbnails = _thumbnails;
 
@@ -425,26 +482,30 @@ void ResultListWindow::onPaint(HDC hdc, RECT &updateRect)
 
 	HPEN thumbBorderPen = CreatePen(PS_SOLID, 1, ml_get_skin_color(WADLG_WNDFG));
 
-	int saveState = SaveDC(hdc);
+	int saveState = SaveDC(_bufferDc);
 
-	SelectObject(hdc, thumbBorderPen);
-	SelectObject(hdc, GetStockObject(NULL_BRUSH));
+	SelectObject(_bufferDc, thumbBorderPen);
+	SelectObject(_bufferDc, GetStockObject(NULL_BRUSH));
 
 	RECT rect;
 	SetRect(&rect, 0, 0, 5, _height);
-	fillRect(hdc, &rect, bgColor);
+	fillRect(_bufferDc, &rect, bgColor);
 
-	RECT itemRect;
-	GetClientRect(_hwnd, &itemRect);
-	itemRect.left = 5;
-	itemRect.bottom = _itemHeight;
-	SetBkMode(hdc, TRANSPARENT);
+	SetBkMode(_bufferDc, TRANSPARENT);
 	if (_mainFont)
-		SelectObject(hdc, _mainFont);
+		SelectObject(_bufferDc, _mainFont);
 
+	RECT itemRect = { 0 };
 	SizeType itemIdx = 0;
 	for (const auto &video : _results)
 	{
+		itemRect = getItemRect(itemIdx);
+		itemRect.left = 5;
+
+		//only draw items which are in the visible area of the window
+		if (itemRect.top >= _height)
+			break;
+
 		if (itemIdx >= _firstItemIdx)
 		{
 			if (itemIdx == _selectedItemIdx)
@@ -458,8 +519,8 @@ void ResultListWindow::onPaint(HDC hdc, RECT &updateRect)
 				lBgColor = (itemIdx % 2 == 0) ? evenItemBgColor : unevenItemBgColor;
 			}
 
-			SetTextColor(hdc, lFgColor);
-			fillRect(hdc, &itemRect, lBgColor);
+			SetTextColor(_bufferDc, lFgColor);
+			fillRect(_bufferDc, &itemRect, lBgColor);
 
 			RECT thumbRect = itemRect;
 			thumbRect.left += _thumbnailPadding;
@@ -467,40 +528,55 @@ void ResultListWindow::onPaint(HDC hdc, RECT &updateRect)
 			thumbRect.right = thumbRect.left + _thumbnailWidth;
 			thumbRect.bottom = thumbRect.top + _thumbnailHeight;
 
-			Rectangle(hdc, thumbRect.left, thumbRect.top, thumbRect.right, thumbRect.bottom);
+			Rectangle(_bufferDc, thumbRect.left, thumbRect.top, thumbRect.right, thumbRect.bottom);
 
 			auto thumbnail = tempThumbnails.find(video.getId());
 
 			if (thumbnail != tempThumbnails.cend())
 			{
-				fillRect(hdc, &thumbRect, RGB(255, 255, 255));
+				SetStretchBltMode(_bufferDc, HALFTONE);
+				StretchDIBits(_bufferDc,
+					thumbRect.left + 1, thumbRect.top + 1, _thumbnailWidth - 2, _thumbnailHeight - 2,
+					0, 0, thumbnail->second.width, thumbnail->second.height,
+					thumbnail->second.bitmapData, &thumbnail->second.bitmapInfo,
+					DIB_RGB_COLORS, SRCCOPY);
 			}
 
 			RECT textRect = itemRect;
 			textRect.left = _textStartXPos;
-			DrawText(hdc, video.getTitle().c_str(), video.getTitle().length(), &textRect,
+			DrawText(_bufferDc, video.getTitle().c_str(), video.getTitle().length(), &textRect,
 				DT_NOCLIP | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_END_ELLIPSIS);
-		
-			itemRect.top = itemRect.bottom;
-			itemRect.bottom += _itemHeight;
 		}
-
-		//only draw items which are in the visible area of the window
-		if (itemRect.top >= _height)
-			break;
 
 		++itemIdx;
 	}
 
-	if (itemRect.top < _height)
+	if (itemRect.bottom < _height)
 	{
-		itemRect.bottom = _height;
-		fillRect(hdc, &itemRect, bgColor);
+		rect.left = 5;
+		rect.right = _width;
+		rect.top = itemRect.bottom;
+		rect.bottom = _height;		
+		fillRect(_bufferDc, &rect, bgColor);
 	}
 
-	RestoreDC(hdc, saveState);
+	BitBlt(hdc, 0, 0, _width, _height, _bufferDc, 0, 0, SRCCOPY);
+	RestoreDC(_bufferDc, saveState);
 
 	DeleteObject(thumbBorderPen);
+}
+
+void ResultListWindow::onNcDestroy()
+{
+	_hwnd = 0;
+	_hwndParent = 0;
+	_xPos = 0;
+	_yPos = 0;
+	_width = 0;
+	_height = 0;
+	_controlId = 0;
+
+	destroyBufferDc();
 }
 
 LRESULT CALLBACK ResultListWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
@@ -600,7 +676,7 @@ LRESULT CALLBACK ResultListWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		{
 			PAINTSTRUCT ps;
 			HDC hdc = BeginPaint(hwnd, &ps);
-			classInstance->onPaint(hdc, ps.rcPaint);
+			classInstance->onPaint(hdc);
 			EndPaint(hwnd, &ps);
 			return 0;
 		}
@@ -608,9 +684,7 @@ LRESULT CALLBACK ResultListWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 		case WM_PRINTCLIENT:
 		{
 			HDC hdc = (HDC)wParam;
-			RECT rect;
-			GetClientRect(hwnd, &rect);
-			classInstance->onPaint(hdc, rect);
+			classInstance->onPaint(hdc);
 			return 0;
 		}
 
@@ -618,13 +692,7 @@ LRESULT CALLBACK ResultListWindow::WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, 
 			return 1;
 
 		case WM_NCDESTROY:
-			classInstance->_hwnd = 0;
-			classInstance->_hwndParent = 0;
-			classInstance->_xPos = 0;
-			classInstance->_yPos = 0;
-			classInstance->_width = 0;
-			classInstance->_height = 0;
-			classInstance->_controlId = 0;
+			classInstance->onNcDestroy();
 			break;
 		}
 	}
