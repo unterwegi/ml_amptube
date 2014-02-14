@@ -18,6 +18,7 @@
 
 // C++ REST SDK Headers
 #include <cpprest/http_client.h>
+#include <cpprest/filestream.h>
 
 // Boost Headers
 #include <boost/filesystem.hpp>

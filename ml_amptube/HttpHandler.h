@@ -31,11 +31,16 @@ public:
 	pplx::task<void> retrieveThumbnails(const VideoContainer &videos,
 		std::function<void(const std::wstring &videoId, const std::string &data)> thumbnailReady) const;
 
-	pplx::task<pplx::streams::istream> getRemoteData(const std::wstring &uri) const;
+	void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring &fileName,
+		std::function<void(int progress, bool finished)> progressChanged) const;
+
+	pplx::task<web::http::http_response> getRemoteData(const std::wstring &uri) const;
 private:
 	///<summary>
 	/// The base URL for search operations</summary>
 	std::wstring _searchUrl;
+
+	static const size_t _downloadChunkSize = 512 * 1024; // 512 KB chunk size
 
 	///<summary>
 	/// Private constructor. Needed for proper singleton.</summary>

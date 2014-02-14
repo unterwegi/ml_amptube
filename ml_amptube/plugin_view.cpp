@@ -203,6 +203,10 @@ static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD c
 		resultList.clearList();
 		return TRUE;
 
+	case IDC_PLAY_OPTIONS:
+		resultList.playSelectedItems();
+		return TRUE;
+
 	case IDC_PREV_RESULTS:
 		if (resultList.getCurrentPage() <= 2)
 			EnableWindow(GetDlgItem(hwnd, IDC_PREV_RESULTS), FALSE);

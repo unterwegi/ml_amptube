@@ -23,6 +23,8 @@ public:
 	std::wstring getSearchQuery() const;
 	int getCurrentPage() const;
 	void clearList();
+
+	void playSelectedItems();
 private:
 	struct ThumbnailData
 	{

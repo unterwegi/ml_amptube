@@ -202,6 +202,20 @@ void ResultListWindow::clearList()
 	setVScrollBarInfo();
 }
 
+void ResultListWindow::playSelectedItems()
+{
+	if (_selectedItemIdx != INT_MAX && !_results.empty())
+	{
+		const auto video = _results.at(_selectedItemIdx);
+		HttpHandler::instance().startAsyncDownload(video.getContentUri(),
+			PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + L".flv",
+			[=](int progress, bool finished)
+		{
+			MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
+		});
+	}
+}
+
 void ResultListWindow::deleteThumbnails()
 {
 	for (auto &thumbnail : _thumbnails)

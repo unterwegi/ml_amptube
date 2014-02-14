@@ -52,28 +52,68 @@ pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
 			if (!video.getThumbnailUri().empty())
 			{
 				getRemoteData(video.getThumbnailUri()).then([=](
-					pplx::streams::istream responseData)
+					web::http::http_response response)
 				{
-					concurrency::streams::container_buffer<std::string> buffer;
-					responseData.read_to_end(buffer).wait();
-					thumbnailReady(video.getId(), buffer.collection());
+					if (response.status_code() == web::http::status_codes::OK)
+					{
+						concurrency::streams::container_buffer<std::string> buffer;
+						response.body().read_to_end(buffer).wait();
+						thumbnailReady(video.getId(), buffer.collection());
+					}
 				}).wait();				
 			}
 		}
 	});
 }
 
-pplx::task<pplx::streams::istream> HttpHandler::getRemoteData(const std::wstring &uri) const
+void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring &fileName,
+	std::function<void(int progress, bool finished)> progressChanged) const
 {
-	web::http::client::http_client client(uri);
-	return client.request(web::http::methods::GET).then([=](
-		web::http::http_response response) -> pplx::streams::istream
+	// Open a stream to the file to write the remote data to
+	auto fileBuffer = std::make_shared<pplx::streams::streambuf<uint8_t>>();
+	pplx::streams::file_buffer<uint8_t>::open(fileName, std::ios::out).then([=](
+		pplx::streams::streambuf<uint8_t> outFile) -> pplx::task<web::http::http_response>
+	{
+		*fileBuffer = outFile;
+		return getRemoteData(uri);
+	})
+	// Write the response body stream into the file buffer.
+	.then([=](web::http::http_response response)
 	{
 		if (response.status_code() == web::http::status_codes::OK)
 		{
-			return response.body();
+			//TODO: Figure out how to get the flv and/or mp4 files. Parse the html of the video page? Use existing tool?
+			auto contentLength = response.headers().content_length();
+			size_t totalBytesRead = 0;
+			int oldPercent = -1;
+
+			while (totalBytesRead < contentLength)
+			{
+				size_t bytesRead = response.body().read(*fileBuffer, _downloadChunkSize).get();
+				if (bytesRead == 0)
+					break;
+
+				totalBytesRead += bytesRead;
+
+				int percent = (int) (((double)totalBytesRead / (double)contentLength) * 100);
+				if (percent != oldPercent)
+					progressChanged(percent, false);
+			}
 		}
-		else
-			return pplx::streams::istream();
+	})
+	// Close the file buffer.
+	.then([=]
+	{
+		return fileBuffer->close();
+	})
+	.then([=]
+	{
+		progressChanged(100, true);
 	});
+}
+
+pplx::task<web::http::http_response> HttpHandler::getRemoteData(const std::wstring &uri) const
+{
+	web::http::client::http_client client(uri);
+	return client.request(web::http::methods::GET);
 }
