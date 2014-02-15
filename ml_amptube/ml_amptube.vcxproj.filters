@@ -48,6 +48,9 @@
     <ClInclude Include="jpgd.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="VideoFormatExtractor.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -102,6 +105,9 @@
       <Filter>Quelldateien</Filter>
     </ClCompile>
     <ClCompile Include="jpgd.cpp">
+      <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="VideoFormatExtractor.cpp">
       <Filter>Quelldateien</Filter>
     </ClCompile>
   </ItemGroup>

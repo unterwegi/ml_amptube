@@ -1,4 +1,6 @@
 #pragma once
+#include "VideoFormatExtractor.h"
+#include "PluginProperties.h"
 
 class VideoDescription
 {
@@ -13,9 +15,8 @@ public:
 	std::wstring getViewCount() const { return _viewCount; }
 	int getDuration() const { return _duration; }
 	std::wstring getThumbnailUri() const { return _thumbnailUri; }
-	std::wstring getContentUri() const { return _contentUri; }
 	
-	bool isCached();
+	bool isCached() const;
 private:
 	std::wstring _id;
 	std::wstring _title;
@@ -24,7 +25,6 @@ private:
 	std::wstring _viewCount;
 	int _duration;
 	std::wstring _thumbnailUri;
-	std::wstring _contentUri;
 };
 
 typedef std::deque<VideoDescription> VideoContainer;

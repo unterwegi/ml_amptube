@@ -1,6 +1,5 @@
 #pragma once
 #include "VideoDescription.h"
-#include "PluginProperties.h"
 
 ///<summary>
 /// Handles all HTTP related functionality. Uses the singleton pattern.</summary>
@@ -38,16 +37,12 @@ public:
 private:
 	///<summary>
 	/// The base URL for search operations</summary>
-	std::wstring _searchUrl;
-
-	static const size_t _downloadChunkSize = 512 * 1024; // 512 KB chunk size
+	static std::wstring _searchUrl;
+	static size_t _downloadChunkSize;
 
 	///<summary>
 	/// Private constructor. Needed for proper singleton.</summary>
-	HttpHandler()
-	{
-		_searchUrl = L"https://gdata.youtube.com/";
-	}
+	HttpHandler() {}
 
 	///<summary>
 	/// Private copy constructor. Needed for proper singleton.</summary>

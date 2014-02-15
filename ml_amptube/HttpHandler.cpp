@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include "HttpHandler.h"
 
+std::wstring HttpHandler::_searchUrl = L"https://gdata.youtube.com/"; //URL to Youtube Search API
+size_t HttpHandler::_downloadChunkSize = 512 * 1024; // 512 KB chunk size
+
 void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 	std::function<void(const VideoContainer &results)> finished) const
 {
@@ -82,7 +85,6 @@ void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring
 	{
 		if (response.status_code() == web::http::status_codes::OK)
 		{
-			//TODO: Figure out how to get the flv and/or mp4 files. Parse the html of the video page? Use existing tool?
 			auto contentLength = response.headers().content_length();
 			size_t totalBytesRead = 0;
 			int oldPercent = -1;

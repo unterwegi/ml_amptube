@@ -9,7 +9,7 @@
 #include <windows.h>
 #include <windowsx.h>
 
-// CRT Headers
+// CRT + STL Headers
 #include <iostream>
 #include <string>
 #include <codecvt>
@@ -22,6 +22,7 @@
 
 // Boost Headers
 #include <boost/filesystem.hpp>
+#include <boost/regex.hpp>
 
 // Winamp Headers
 #include <Winamp/wa_ipc.h>

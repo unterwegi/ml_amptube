@@ -98,6 +98,7 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
     <ClInclude Include="VideoDescription.h" />
+    <ClInclude Include="VideoFormatExtractor.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">
@@ -121,6 +122,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="VideoDescription.cpp" />
+    <ClCompile Include="VideoFormatExtractor.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="ml_amptube.rc" />
@@ -134,5 +136,6 @@
     <Import Project="..\packages\boost_system.1.55.0.16\build\native\boost_system.targets" Condition="Exists('..\packages\boost_system.1.55.0.16\build\native\boost_system.targets')" />
     <Import Project="..\packages\boost_filesystem.1.55.0.16\build\native\boost_filesystem.targets" Condition="Exists('..\packages\boost_filesystem.1.55.0.16\build\native\boost_filesystem.targets')" />
     <Import Project="..\packages\cpprestsdk.1.4.0\build\native\cpprestsdk.targets" Condition="Exists('..\packages\cpprestsdk.1.4.0\build\native\cpprestsdk.targets')" />
+    <Import Project="..\packages\boost_regex.1.55.0.16\build\native\boost_regex.targets" Condition="Exists('..\packages\boost_regex.1.55.0.16\build\native\boost_regex.targets')" />
   </ImportGroup>
 </Project>

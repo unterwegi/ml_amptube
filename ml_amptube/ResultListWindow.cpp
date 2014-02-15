@@ -207,12 +207,34 @@ void ResultListWindow::playSelectedItems()
 	if (_selectedItemIdx != INT_MAX && !_results.empty())
 	{
 		const auto video = _results.at(_selectedItemIdx);
-		HttpHandler::instance().startAsyncDownload(video.getContentUri(),
-			PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + L".flv",
-			[=](int progress, bool finished)
+		if (!video.isCached())
 		{
-			MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
-		});
+			auto formatDescriptions = VideoFormatExtractor::instance().getFormatDescriptionMap();
+			auto formats = VideoFormatExtractor::instance().getVideoFormatMap(video.getId());
+
+			if (!formats.empty())
+			{
+				auto formatDesc = formatDescriptions.find(formats.begin()->first);
+				std::wstring downloadUri = formats.begin()->second;
+
+				//TODO: add selection of URI for highest available quality
+
+				if (formatDesc != formatDescriptions.end())
+				{
+					std::wstring extension = L"." + formatDesc->second.getContainerName();
+					std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+
+					HttpHandler::instance().startAsyncDownload(downloadUri,
+						PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
+						[=](int progress, bool finished)
+					{
+						MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
+					});
+				}
+			}
+		}
+
+		//TODO: Put the videos into Winamps playlist
 	}
 }
 
