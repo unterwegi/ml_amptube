@@ -99,6 +99,7 @@
     <ClInclude Include="targetver.h" />
     <ClInclude Include="VideoDescription.h" />
     <ClInclude Include="VideoFormatExtractor.h" />
+    <ClInclude Include="VideoFormatParseException.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.cpp">

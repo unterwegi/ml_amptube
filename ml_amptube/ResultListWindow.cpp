@@ -210,27 +210,37 @@ void ResultListWindow::playSelectedItems()
 		if (!video.isCached())
 		{
 			auto formatDescriptions = VideoFormatExtractor::instance().getFormatDescriptionMap();
-			auto formats = VideoFormatExtractor::instance().getVideoFormatMap(video.getId());
 
-			if (!formats.empty())
+			try
 			{
-				auto formatDesc = formatDescriptions.find(formats.begin()->first);
-				std::wstring downloadUri = formats.begin()->second;
+				auto formats = VideoFormatExtractor::instance().getVideoFormatMap(video.getId());
 
-				//TODO: add selection of URI for highest available quality
-
-				if (formatDesc != formatDescriptions.end())
+				if (!formats.empty())
 				{
-					std::wstring extension = L"." + formatDesc->second.getContainerName();
-					std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+					auto formatDesc = formatDescriptions.find(formats.begin()->first);
+					std::wstring downloadUri = formats.begin()->second;
 
-					HttpHandler::instance().startAsyncDownload(downloadUri,
-						PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
-						[=](int progress, bool finished)
+					//TODO: add selection of URI for highest available quality
+
+					if (formatDesc != formatDescriptions.end())
 					{
-						MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
-					});
+						std::wstring extension = L"." + formatDesc->second.getContainerName();
+						std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+
+						HttpHandler::instance().startAsyncDownload(downloadUri,
+							PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
+							[=](int progress, bool finished)
+						{
+							MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
+						});
+					}
 				}
+			}
+			catch (VideoFormatParseException &e)
+			{
+				MessageBox(_hwndParent, 
+					(GetLocalString(IDS_FORMAT_EXTRACT_ERROR) + L"\n\n" + e.getReason()).c_str(),
+					L"", MB_OK | MB_ICONERROR);
 			}
 		}
 

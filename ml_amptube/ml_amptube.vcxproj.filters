@@ -51,6 +51,9 @@
     <ClInclude Include="VideoFormatExtractor.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="VideoFormatParseException.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -109,6 +112,57 @@
     </ClCompile>
     <ClCompile Include="VideoFormatExtractor.cpp">
       <Filter>Quelldateien</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.c_regex_traits.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.cpp_regex_traits.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.cregex.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.fileiter.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.icu.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.instances.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.posix_api.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.regex.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.regex_debug.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.regex_raw_buffer.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.regex_traits_defaults.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.static_mutex.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.usinstances.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.w32_regex_traits.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.wc_regex_traits.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.wide_posix_api.cpp">
+      <Filter>Quelldateien\boost</Filter>
+    </ClCompile>
+    <ClCompile Include="$(MSBuildThisFileDirectory)..\..\lib\native\src\boost_regex.winstances.cpp">
+      <Filter>Quelldateien\boost</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

@@ -69,15 +69,17 @@ END
 STRINGTABLE
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 BEGIN
-IDS_SEARCH			L"Search:"
-IDS_PLAY			L"Play"
-IDS_CLEAR_SEARCH	L"Clear Search"
+IDS_SEARCH					L"Search:"
+IDS_PLAY					L"Play"
+IDS_CLEAR_SEARCH			L"Clear Search"
+IDS_FORMAT_EXTRACT_ERROR	L"An error occured during retrieval of the available video formats: "
 END
 
 STRINGTABLE
 LANGUAGE LANG_GERMAN, SUBLANG_NEUTRAL
 BEGIN
-IDS_SEARCH			L"Suche:"
-IDS_PLAY			L"Abspielen"
-IDS_CLEAR_SEARCH	L"Suche löschen"
+IDS_SEARCH					L"Suche:"
+IDS_PLAY					L"Abspielen"
+IDS_CLEAR_SEARCH			L"Suche löschen"
+IDS_FORMAT_EXTRACT_ERROR	L"Während der Abfrage der verfügbaren Videoformate ist ein Fehler aufgetreten: "
 END

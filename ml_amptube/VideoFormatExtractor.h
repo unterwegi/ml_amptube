@@ -1,4 +1,7 @@
 #pragma once
+
+#include "VideoFormatParseException.h"
+
 class VideoFormatExtractor
 {
 public:

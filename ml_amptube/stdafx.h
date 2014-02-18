@@ -5,6 +5,7 @@
 #define WIN32_LEAN_AND_MEAN 
 #define OEMRESOURCE
 #define NOMINMAX
+#define _SCL_SECURE_NO_WARNINGS
 // Windows Headers
 #include <windows.h>
 #include <windowsx.h>
@@ -23,6 +24,7 @@
 // Boost Headers
 #include <boost/filesystem.hpp>
 #include <boost/regex.hpp>
+#include <boost/algorithm/string.hpp>
 
 // Winamp Headers
 #include <Winamp/wa_ipc.h>
