@@ -29,8 +29,8 @@ public:
 	typedef std::map<int, FormatDescription>	FormatDescriptionMap;
 	typedef FormatDescriptionMap::value_type	FormatDescriptionPair;
 
-	typedef std::map<int, std::wstring>	VideoFormatMap;
-	typedef VideoFormatMap::value_type	VideoFormatPair;
+	typedef std::map<int, std::wstring>			VideoFormatMap;
+	typedef VideoFormatMap::value_type			VideoFormatPair;
 
 	///<summary>
 	/// Returns a reference to the static class instance.</summary>
@@ -63,5 +63,7 @@ private:
 	///<summary>
 	/// Private assignment operator. Needed for proper singleton.</summary>
 	VideoFormatExtractor& operator=(const VideoFormatExtractor&) {}
+
+	std::wstring decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const;
 };
 

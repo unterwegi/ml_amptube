@@ -118,6 +118,19 @@ std::wstring GetLocalString(UINT id)
 	return result;
 }
 
+bool TryParse(const std::wstring &str, int &i)
+{
+	try
+	{
+		i = std::stoi(str);
+		return true;
+	}
+	catch (std::out_of_range)
+	{
+		return false;
+	}
+}
+
 extern "C" __declspec(dllexport) winampMediaLibraryPlugin *winampGetMediaLibraryPlugin()
 {
 	return &Plugin;

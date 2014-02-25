@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "VideoFormatExtractor.h"
 #include "HttpHandler.h"
+#include "ml_amptube.h"
 
 VideoFormatExtractor::FormatDescriptionMap VideoFormatExtractor::_formatDescriptionMap = {
 	{ 5, VideoFormatExtractor::FormatDescription(L"FLV", L"240p", false) },
@@ -24,9 +25,10 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 		std::wstring responseBody = response.extract_string().get();
 		boost::wregex videoFormatRegex(L"\"url_encoded_fmt_stream_map\":\\s*\"([^\"]+)\"", boost::regex_constants::perl);
 		boost::wregex videoAdaptFormatRegex(L"\"adaptive_fmts\":\\s*\"([^\"]+)\"", boost::regex_constants::perl);
+		boost::wregex scriptUrlRegex(L"\"js\":\\s*\"([^\"]+)\"", boost::regex_constants::perl);
 		boost::wsmatch matches;
 
-		std::wstring videoFormats, videoAdaptFormats;
+		std::wstring videoFormats, videoAdaptFormats, scriptUrl;
 
 		if (boost::regex_search(responseBody, matches, videoFormatRegex))
 		{
@@ -37,6 +39,15 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 		}
 		else
 			throw VideoFormatParseException(L"No url_encoded_fmt_stream property was found. Something must have changed behind the scenes ...");
+
+		if (boost::regex_search(responseBody, matches, scriptUrlRegex))
+		{
+			scriptUrl.assign(matches[1].first, matches[1].second);
+			boost::replace_all(scriptUrl, L"\\", L"");
+
+			if (scriptUrl.find(L"//") == 0)
+				scriptUrl = L"https:" + scriptUrl;
+		}
 
 		//Start the formats parsing
 		//Determine the used separators
@@ -89,10 +100,8 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 
 				if (!signature.empty())
 					url.append(L"&signature=").append(signature);
-				else
-				{
-					//TODO: Handle encrypted signatures in the formatValues[L"s"] field
-				}
+				else if (formatValues.find(L"s") != formatValues.end())
+					url.append(L"&signature=").append(decryptSignature(formatValues[L"s"], scriptUrl));
 
 				if (!boost::icontains(url, L"ratebypass"))
 					url.append(L"&ratebypass=yes");
@@ -103,4 +112,150 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 	}).wait();
 
 	return formatMap;
+}
+
+
+std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const
+{
+	if (encSignature.empty() || signatureScriptUrl.empty()) return L"";
+	
+	std::vector<int> decodeArray;
+	std::size_t signatureLength = 81;
+
+	HttpHandler::instance().getRemoteData(signatureScriptUrl).then([&]
+		(web::http::http_response response)
+	{
+		std::wstring scriptCode = response.extract_string().get();
+		
+		boost::wregex functionNameRegex(L"\\.signature\\s*=\\s*(\\w+)\\(\\w+\\)", boost::regex_constants::perl);
+		boost::wsmatch matches;
+
+		if (boost::regex_search(scriptCode, matches, functionNameRegex))
+		{
+			std::wstring functionName(matches[1].first, matches[1].second);
+			boost::wregex functionCodeRegex(L"function " + functionName +
+				L"\\s*\\(\\w+\\)\\s*{\\w+=\\w+\\.split\\(\"\"\\);(.+);return \\w+\\.join",
+				boost::regex_constants::perl);
+
+			if (boost::regex_search(scriptCode, matches, functionCodeRegex))
+			{
+				std::wstring functionCode(matches[1].first, matches[1].second);
+
+				boost::wregex sliceRegex(L"slice\\s*\\(\\s*(.+)\\s*\\)",
+					boost::regex_constants::perl);
+				boost::wregex swapRegex(L"\\w+\\s*\\(\\s*\\w+\\s*,\\s*([0-9]+)\\s*\\)",
+					boost::regex_constants::perl);
+				boost::wregex inlineRegex(L"\\w+\\[0\\]\\s*=\\s*\\w+\\[([0-9]+)\\s*%\\s*\\w+\\.length\\]",
+					boost::regex_constants::perl);
+
+				std::vector<std::wstring> codePieces;
+				boost::iter_split(codePieces, functionCode, boost::first_finder(L";"));
+				for (std::size_t i = 0; i < codePieces.size(); ++i)
+				{
+					boost::trim(codePieces[i]);
+					if (!codePieces[i].empty())
+					{
+						if (boost::contains(codePieces[i], L"slice"))
+						{
+							if (boost::regex_search(codePieces[i], matches, sliceRegex))
+							{
+								std::wstring slice(matches[1].first, matches[1].second);
+								int sliceInt;
+
+								if (TryParse(slice, sliceInt))
+								{
+									decodeArray.push_back(-sliceInt);
+									signatureLength += sliceInt;
+								}
+								else return;
+							}
+							else return;
+						}
+						else
+						{
+							if (boost::contains(codePieces[i], L"reverse"))
+								decodeArray.push_back(0);
+							else
+							{
+								if (boost::contains(codePieces[i], L"[0]"))
+								{
+									if ((i + 2) < codePieces.size()
+										&& boost::contains(codePieces[i + 1], L".length")
+										&& boost::contains(codePieces[i + 1], L"[0]"))
+									{
+										if (boost::regex_search(codePieces[i], matches, inlineRegex))
+										{
+											std::wstring inlineStr(matches[1].first, matches[1].second);
+											int inlineInt;
+
+											if (TryParse(inlineStr, inlineInt))
+											{
+												decodeArray.push_back(inlineInt);
+												i+=2;
+											}
+											else return;
+										}
+										else return;
+									}
+									else return;
+								}
+								else
+								{
+									if (boost::contains(codePieces[i], L","))
+									{
+										if (boost::regex_search(codePieces[i], matches, swapRegex))
+										{
+											std::wstring swapStr(matches[1].first, matches[1].second);
+											int swapInt;
+
+											if (TryParse(swapStr, swapInt))
+											{
+												decodeArray.push_back(swapInt);
+											}
+											else return;
+										}
+										else return;
+									}
+									else return;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}).wait();
+
+	if (encSignature.length() == signatureLength && !decodeArray.empty())
+	{
+		std::vector<wchar_t> sigArray;
+		std::copy(encSignature.begin(), encSignature.end(), sigArray.begin());
+
+		for (const auto &act : decodeArray)
+		{
+			if (act > 0)
+			{
+				wchar_t temp = sigArray[0];
+				sigArray[0] = sigArray[act%sigArray.size()];
+				sigArray[act] = temp;
+			}
+			else
+			{
+				if (act == 0)
+				{
+					std::reverse(sigArray.begin(), sigArray.end());
+				}
+				else
+				{
+					std::vector<wchar_t> bufArray(&sigArray[-act], &(*sigArray.end()));
+					sigArray = std::move(bufArray);
+				}
+			}
+		}
+
+		std::wstring decSignature(sigArray.begin(), sigArray.end());
+
+		return (decSignature.length() == 81) ? decSignature : encSignature;
+	}
+	else return encSignature;
 }

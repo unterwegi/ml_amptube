@@ -72,6 +72,8 @@ pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
 void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring &fileName,
 	std::function<void(int progress, bool finished)> progressChanged) const
 {
+	//TODO: Add support for cancelations
+
 	// Open a stream to the file to write the remote data to
 	auto fileBuffer = std::make_shared<pplx::streams::streambuf<uint8_t>>();
 	pplx::streams::file_buffer<uint8_t>::open(fileName, std::ios::out).then([=](
@@ -106,10 +108,7 @@ void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring
 	// Close the file buffer.
 	.then([=]
 	{
-		return fileBuffer->close();
-	})
-	.then([=]
-	{
+		fileBuffer->close().wait();
 		progressChanged(100, true);
 	});
 }

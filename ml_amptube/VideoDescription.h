@@ -15,7 +15,8 @@ public:
 	std::wstring getViewCount() const { return _viewCount; }
 	int getDuration() const { return _duration; }
 	std::wstring getThumbnailUri() const { return _thumbnailUri; }
-	
+	int getDownloadPercent() const { return _downloadPercent;  }
+	void setDownloadPercent(int percent) { _downloadPercent = percent; }
 	bool isCached() const;
 private:
 	std::wstring _id;
@@ -25,6 +26,7 @@ private:
 	std::wstring _viewCount;
 	int _duration;
 	std::wstring _thumbnailUri;
+	int _downloadPercent;
 };
 
 typedef std::deque<VideoDescription> VideoContainer;

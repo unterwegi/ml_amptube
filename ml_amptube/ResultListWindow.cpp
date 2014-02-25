@@ -206,7 +206,7 @@ void ResultListWindow::playSelectedItems()
 {
 	if (_selectedItemIdx != INT_MAX && !_results.empty())
 	{
-		const auto video = _results.at(_selectedItemIdx);
+		auto &video = _results.at(_selectedItemIdx);
 		if (!video.isCached())
 		{
 			auto formatDescriptions = VideoFormatExtractor::instance().getFormatDescriptionMap();
@@ -229,9 +229,14 @@ void ResultListWindow::playSelectedItems()
 
 						HttpHandler::instance().startAsyncDownload(downloadUri,
 							PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
-							[=](int progress, bool finished)
+							[&](int progress, bool finished)
 						{
-							MessageBox(NULL, std::to_wstring(progress).c_str(), L"Download", MB_OK);
+							if (!finished)
+								video.setDownloadPercent(progress);
+							else
+								video.setDownloadPercent(-1);
+
+							triggerRedraw();
 						});
 					}
 				}
@@ -592,6 +597,14 @@ void ResultListWindow::onPaint(HDC hdc)
 			textRect.left = _textStartXPos;
 			DrawText(_bufferDc, video.getTitle().c_str(), video.getTitle().length(), &textRect,
 				DT_NOCLIP | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_END_ELLIPSIS);
+
+			if (video.getDownloadPercent() != -1)
+			{
+				std::wstring progressStr = std::to_wstring(video.getDownloadPercent()) + L" %";
+				textRect.left += 80;
+				DrawText(_bufferDc, progressStr.c_str(), progressStr.length(), &textRect,
+					DT_NOCLIP | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_END_ELLIPSIS);
+			}
 		}
 
 		++itemIdx;

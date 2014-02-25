@@ -14,20 +14,23 @@ VideoDescription::VideoDescription(const web::json::value &input)
 		_thumbnailUri = input.get(L"thumbnail").get(L"hqDefault").as_string();
 	else if (input.get(L"thumbnail").has_field(L"sqDefault"))
 		_thumbnailUri = input.get(L"thumbnail").get(L"sqDefault").as_string();
+
+	//-1 signals that no download is currently active for this video
+	_downloadPercent = -1;
 }
 
 bool VideoDescription::isCached() const
 {
 	boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
-	for (const auto &file : cachePath)
+	boost::filesystem::directory_iterator end;
+
+	for (boost::filesystem::directory_iterator iter(cachePath); iter != end; ++iter)
 	{
-		if (boost::filesystem::is_regular_file(file)
-			&& (file.extension() == L"flv" || file.extension() == L"mp4"))
+		if (!boost::filesystem::is_directory(iter->path())
+			&& (iter->path().filename() == _id + L".flv"
+			|| iter->path().extension() == _id + L".mp4"))
 		{
-			if (file.filename() == _id)
-			{
-				return true;
-			}
+			return true;
 		}
 	}
 	
