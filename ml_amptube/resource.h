@@ -1,4 +1,4 @@
-#define IDC_STATIC				0
+#define IDC_STATIC				90000
 
 //Main Dialog (Part which is shown in the media library)
 #define IDD_VIEW_AMPTUBE			101
@@ -14,6 +14,7 @@
 #define IDC_CACHE_PATH				2001
 #define IDC_BROWSE_PATH				2002
 #define IDC_CLEAR_CACHE				2003
+#define IDC_DESIRED_QUALITY			2004
 
 //String Table IDs
 #define IDS_SEARCH					3001

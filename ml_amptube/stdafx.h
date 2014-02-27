@@ -9,6 +9,7 @@
 // Windows Headers
 #include <windows.h>
 #include <windowsx.h>
+#include <shlobj.h>
 
 // CRT + STL Headers
 #include <iostream>

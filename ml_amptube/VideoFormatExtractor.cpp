@@ -3,17 +3,81 @@
 #include "HttpHandler.h"
 #include "ml_amptube.h"
 
+VideoFormatExtractor::VideoQualityOrderMap VideoFormatExtractor::_videoQualityOrderMap = {
+	{ 0, L"240p" },
+	{ 1, L"360p" },
+	{ 2, L"480p" },
+	{ 3, L"720p" },
+	{ 4, L"1080p" },
+};
+
+int VideoFormatExtractor::_defaultDesiredQuality = 3;
+
 VideoFormatExtractor::FormatDescriptionMap VideoFormatExtractor::_formatDescriptionMap = {
-	{ 5, VideoFormatExtractor::FormatDescription(L"FLV", L"240p", false) },
-	{ 18, VideoFormatExtractor::FormatDescription(L"MP4", L"270p/360p", false) },
-	{ 22, VideoFormatExtractor::FormatDescription(L"MP4", L"720p", false) },
-	{ 133, VideoFormatExtractor::FormatDescription(L"MP4", L"240p", true) },
-	{ 134, VideoFormatExtractor::FormatDescription(L"MP4", L"360p", true) },
-	{ 135, VideoFormatExtractor::FormatDescription(L"MP4", L"480p", true) },
-	{ 136, VideoFormatExtractor::FormatDescription(L"MP4", L"720p", true) },
+	{ 5, VideoFormatExtractor::FormatDescription(L"FLV", 0, false) },
+	{ 18, VideoFormatExtractor::FormatDescription(L"MP4", 1, false) },
+	{ 22, VideoFormatExtractor::FormatDescription(L"MP4", 3, false) },
+	{ 133, VideoFormatExtractor::FormatDescription(L"MP4", 0, true) },
+	{ 134, VideoFormatExtractor::FormatDescription(L"MP4", 1, true) },
+	{ 135, VideoFormatExtractor::FormatDescription(L"MP4", 2, true) },
+	{ 136, VideoFormatExtractor::FormatDescription(L"MP4", 3, true) },
+	{ 137, VideoFormatExtractor::FormatDescription(L"MP4", 4, true) },
 };
 
 std::wstring VideoFormatExtractor::_watchUri = L"https://www.youtube.com/watch?v=";
+
+int VideoFormatExtractor::getDownloadFormatId(const VideoFormatExtractor::VideoFormatMap &formats,
+	int desiredQualityId, bool withDash) const
+{
+	int formatId = INT_MAX;
+
+	for (const auto &format : formats)
+	{
+		auto formatDescription = _formatDescriptionMap.find(format.first);
+		if (formatDescription != _formatDescriptionMap.end())
+		{
+			if (formatDescription->second.getQualityId() <= desiredQualityId)
+			{
+				if (!formatDescription->second.isDash() ||
+					(formatDescription->second.isDash() && withDash))
+					formatId = format.first;
+			}
+		}
+	}
+
+	return formatId;
+}
+
+bool VideoFormatExtractor::startDownload(const VideoDescription &video,
+	std::function<void(int progress, bool finished)> progressChanged) const
+{
+	auto formats = getVideoFormatMap(video.getId());
+
+	if (!formats.empty())
+	{
+		int desiredQuality = std::stoi(PluginProperties::instance().getProperty(L"desiredQuality"));
+		int formatId = getDownloadFormatId(formats, desiredQuality, false);
+
+		//TODO: Handling of DASH-enabled formats (both video and audio streams must be downloaded separately and muxed together in one file using ffmpeg)
+		auto formatDesc = _formatDescriptionMap.find(formatId);
+
+		if (formatDesc != _formatDescriptionMap.end())
+		{
+			std::wstring downloadUri = formats.find(formatId)->second;
+			std::wstring extension = L"." + formatDesc->second.getContainerName();
+			std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+
+			HttpHandler::instance().startAsyncDownload(downloadUri,
+				PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
+				progressChanged);
+
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
 VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(const std::wstring &videoId) const
 {
@@ -113,7 +177,6 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 
 	return formatMap;
 }
-
 
 std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const
 {

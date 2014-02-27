@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "ResultListWindow.h"
+#include "VideoFormatExtractor.h"
 #include "ml_amptube.h"
 #include "jpgd.h"
 
@@ -49,6 +50,9 @@ ResultListWindow::ResultListWindow()
 	_thumbnailWidth = 150;
 	_thumbnailHeight = _itemHeight - _thumbnailPadding * 2;
 	_textStartXPos = _thumbnailWidth + _thumbnailPadding * 2;
+	_textHeight = 11;
+	_titleYPos = _thumbnailPadding + _textHeight;
+	_progressYPos = _titleYPos + _textHeight + 5;
 }
 
 ResultListWindow::~ResultListWindow()
@@ -209,37 +213,18 @@ void ResultListWindow::playSelectedItems()
 		auto &video = _results.at(_selectedItemIdx);
 		if (!video.isCached())
 		{
-			auto formatDescriptions = VideoFormatExtractor::instance().getFormatDescriptionMap();
-
 			try
 			{
-				auto formats = VideoFormatExtractor::instance().getVideoFormatMap(video.getId());
-
-				if (!formats.empty())
+				VideoFormatExtractor::instance().startDownload(video,
+					[&](int progress, bool finished)
 				{
-					auto formatDesc = formatDescriptions.find(formats.begin()->first);
-					std::wstring downloadUri = formats.begin()->second;
+					if (!finished)
+						video.setDownloadPercent(progress);
+					else
+						video.setDownloadPercent(-1);
 
-					//TODO: add selection of URI for highest available quality
-
-					if (formatDesc != formatDescriptions.end())
-					{
-						std::wstring extension = L"." + formatDesc->second.getContainerName();
-						std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
-
-						HttpHandler::instance().startAsyncDownload(downloadUri,
-							PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
-							[&](int progress, bool finished)
-						{
-							if (!finished)
-								video.setDownloadPercent(progress);
-							else
-								video.setDownloadPercent(-1);
-
-							triggerRedraw();
-						});
-					}
-				}
+					triggerRedraw();
+				});
 			}
 			catch (VideoFormatParseException &e)
 			{
@@ -595,13 +580,19 @@ void ResultListWindow::onPaint(HDC hdc)
 
 			RECT textRect = itemRect;
 			textRect.left = _textStartXPos;
+			textRect.top += _titleYPos;
+			textRect.bottom = textRect.top + _textHeight;
 			DrawText(_bufferDc, video.getTitle().c_str(), video.getTitle().length(), &textRect,
 				DT_NOCLIP | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_END_ELLIPSIS);
 
 			if (video.getDownloadPercent() != -1)
 			{
 				std::wstring progressStr = std::to_wstring(video.getDownloadPercent()) + L" %";
-				textRect.left += 80;
+
+				RECT textRect = itemRect;
+				textRect.left = _textStartXPos;
+				textRect.top += _progressYPos;
+				textRect.bottom = textRect.top + _textHeight;
 				DrawText(_bufferDc, progressStr.c_str(), progressStr.length(), &textRect,
 					DT_NOCLIP | DT_VCENTER | DT_LEFT | DT_NOPREFIX | DT_SINGLELINE | DT_END_ELLIPSIS);
 			}

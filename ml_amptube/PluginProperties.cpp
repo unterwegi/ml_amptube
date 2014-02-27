@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "PluginProperties.h"
+#include "VideoFormatExtractor.h"
 #include "ml_amptube.h"
 
 PluginProperties::PluginProperties()
@@ -13,6 +14,9 @@ PluginProperties::PluginProperties()
 		factory->Release();
 		_properties.insert(PropertyPair(L"cachePath", cachePath));
 	}
+
+	_properties.insert(PropertyPair(L"desiredQuality",
+		std::to_wstring(VideoFormatExtractor::instance().getDefaultDesiredQuality())));
 	
 	loadProperties();
 }

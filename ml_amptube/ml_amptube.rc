@@ -41,14 +41,14 @@ END
 /////////////////////////////////////////////////////////////////////////////
 //Config Dialog
 LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
-IDD_CONFIG_AMPTUBE DIALOGEX 0, 0, 180, 75
+IDD_CONFIG_AMPTUBE DIALOGEX 0, 0, 180, 104
 STYLE DS_SETFONT | WS_POPUPWINDOW | WS_CAPTION | WS_CLIPCHILDREN | WS_VISIBLE
 CAPTION "AmpTube Plugin Configuration"
 FONT 8, "MS Shell Dlg", 400, 0, 0x1
 BEGIN
 	CONTROL "Cache Path:", IDC_STATIC, "Static",
 		SS_LEFT,
-		5, 5, 50, 11
+		5, 5, 100, 11
 	CONTROL "", IDC_CACHE_PATH, "Edit",
 		WS_TABSTOP | WS_BORDER | ES_AUTOHSCROLL,
 		5, 16, 150, 13
@@ -58,12 +58,18 @@ BEGIN
 	CONTROL "Clear Cache", IDC_CLEAR_CACHE, "Button",
 		WS_TABSTOP,
 		5, 34, 60, 13
+	CONTROL "Desired Download Quality:", IDC_STATIC + 1, "Static",
+		SS_LEFT,
+		5, 52, 100, 11
+	CONTROL "", IDC_DESIRED_QUALITY, "Combobox",
+		WS_TABSTOP | WS_BORDER | CBS_DROPDOWNLIST,
+		5, 63, 100, 13
 	CONTROL "OK", IDOK, "Button",
 		WS_TABSTOP,
-		70, 57, 50, 13
+		70, 86, 50, 13
 	CONTROL "Cancel", IDCANCEL, "Button",
 		WS_TABSTOP,
-		125, 57, 50, 13
+		125, 86, 50, 13
 END
 
 STRINGTABLE

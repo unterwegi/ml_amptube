@@ -1,33 +1,35 @@
 #pragma once
 
 #include "VideoFormatParseException.h"
+#include "VideoDescription.h"
 
 class VideoFormatExtractor
 {
 public:
+	typedef std::map<int, std::wstring>			VideoQualityOrderMap;
+
 	class FormatDescription
 	{
 	public:
-		FormatDescription(std::wstring containerName, std::wstring resolution, bool dashEnabled)
-			: _containerName(containerName), _resolution(resolution), _dashEnabled(dashEnabled) {}
+		FormatDescription(std::wstring containerName, int qualityId, bool usesDash)
+			: _containerName(containerName), _qualityId(qualityId), _usesDash(usesDash) {}
 
 		std::wstring getContainerName(){ return _containerName; }
-		std::wstring getResolution(){ return _resolution; }
-		bool isDashEnabled(){ return _dashEnabled; }
+		int getQualityId(){ return _qualityId; }
+		bool isDash(){ return _usesDash; }
 
-		std::wstring toString()
+		std::wstring toString(const VideoQualityOrderMap &videoQualities)
 		{
-			return _containerName + L" " + _resolution + L" " +
-				(_dashEnabled ? L"DASH" : L"Non-DASH");
+			return _containerName + L" " + videoQualities.find(_qualityId)->second + L" " +
+				(_usesDash ? L"DASH" : L"Non-DASH");
 		}
 	private:
 		std::wstring _containerName;
-		std::wstring _resolution;
-		bool _dashEnabled;
+		int _qualityId;
+		bool _usesDash;
 	};
 
-	typedef std::map<int, FormatDescription>	FormatDescriptionMap;
-	typedef FormatDescriptionMap::value_type	FormatDescriptionPair;
+	typedef std::map<int, FormatDescription>	FormatDescriptionMap;	
 
 	typedef std::map<int, std::wstring>			VideoFormatMap;
 	typedef VideoFormatMap::value_type			VideoFormatPair;
@@ -42,15 +44,19 @@ public:
 		return _instance;
 	}
 
+	VideoQualityOrderMap getVideoQualitiesOrderMap() { return _videoQualityOrderMap; }
+	int getDefaultDesiredQuality() { return _defaultDesiredQuality; }
+	FormatDescriptionMap getFormatDescriptionMap() { return _formatDescriptionMap; }
+
 	~VideoFormatExtractor(){}
 
-	FormatDescriptionMap getFormatDescriptionMap() const { return _formatDescriptionMap;  }
-
-	VideoFormatMap getVideoFormatMap(const std::wstring &videoId) const;
-	
+	bool startDownload(const VideoDescription &video, 
+		std::function<void(int progress, bool finished)> progressChanged) const;
 private:
+	static VideoQualityOrderMap _videoQualityOrderMap;
 	static FormatDescriptionMap _formatDescriptionMap;
 	static std::wstring _watchUri;
+	static int _defaultDesiredQuality;
 
 	///<summary>
 	/// Private constructor. Needed for proper singleton.</summary>
@@ -63,6 +69,9 @@ private:
 	///<summary>
 	/// Private assignment operator. Needed for proper singleton.</summary>
 	VideoFormatExtractor& operator=(const VideoFormatExtractor&) {}
+
+	VideoFormatMap getVideoFormatMap(const std::wstring &videoId) const;
+	int getDownloadFormatId(const VideoFormatMap &formats, int desiredQualityId, bool withDash) const;
 
 	std::wstring decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const;
 };

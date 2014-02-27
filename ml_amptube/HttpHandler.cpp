@@ -73,10 +73,13 @@ void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring
 	std::function<void(int progress, bool finished)> progressChanged) const
 {
 	//TODO: Add support for cancelations
+	
+	//file name for the target file during the download (.incomplete appended to fileName)
+	std::wstring fileNameIncomplete = fileName + L".incomplete";
 
 	// Open a stream to the file to write the remote data to
 	auto fileBuffer = std::make_shared<pplx::streams::streambuf<uint8_t>>();
-	pplx::streams::file_buffer<uint8_t>::open(fileName, std::ios::out).then([=](
+	pplx::streams::file_buffer<uint8_t>::open(fileNameIncomplete, std::ios::out).then([=](
 		pplx::streams::streambuf<uint8_t> outFile) -> pplx::task<web::http::http_response>
 	{
 		*fileBuffer = outFile;
@@ -105,10 +108,11 @@ void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring
 			}
 		}
 	})
-	// Close the file buffer.
+	// Close the file buffer and remove the .incomplete suffix from the file
 	.then([=]
 	{
 		fileBuffer->close().wait();
+		boost::filesystem::rename(fileNameIncomplete, fileName);
 		progressChanged(100, true);
 	});
 }

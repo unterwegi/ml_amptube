@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "plugin_view.h"
+#include "VideoFormatExtractor.h"
 #include "ml_amptube.h"
 
 GetSkinColorFunc ml_get_skin_color = 0;
@@ -287,34 +288,97 @@ INT_PTR CALLBACK MainPluginViewProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPAR
 	return FALSE;
 }
 
+static int CALLBACK BrowseCallbackProc(HWND hwnd, UINT uMsg, LPARAM lParam, LPARAM lpData)
+{
+
+	if (uMsg == BFFM_INITIALIZED)
+		SendMessage(hwnd, BFFM_SETSELECTION, TRUE, lpData);
+
+	return 0;
+}
+
+static std::wstring SelectFoler(std::wstring initPath)
+{
+	wchar_t path[MAX_PATH];
+
+
+	BROWSEINFO bi = { 0 };
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE;
+	bi.lpfn = BrowseCallbackProc;
+	bi.lParam = (LPARAM)initPath.c_str();
+
+	LPITEMIDLIST pidl = SHBrowseForFolder(&bi);
+
+	if (pidl)
+	{
+		//get the name of the folder and put it in path
+		SHGetPathFromIDList(pidl, path);
+		CoTaskMemFree(pidl);
+		return path;
+	}
+
+	return L"";
+}
+
 static BOOL amptube_Config_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
-	HWND editWnd = GetDlgItem(hwnd, IDC_CACHE_PATH);
-	SendMessage(editWnd, EM_SETLIMITTEXT, MAX_PATH, 0);
-	SetWindowText(editWnd,
+	SendMessage(GetDlgItem(hwnd, IDC_CACHE_PATH), EM_SETLIMITTEXT, MAX_PATH, 0);
+	SetWindowText(GetDlgItem(hwnd, IDC_CACHE_PATH),
 		PluginProperties::instance().getProperty(L"cachePath").c_str());
+
+	boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
+
+	if (boost::filesystem::is_empty(cachePath))
+		EnableWindow(GetDlgItem(hwnd, IDC_CLEAR_CACHE), FALSE);
+
+	int selectedItem = std::stoi(PluginProperties::instance().getProperty(L"desiredQuality"));
+
+	for (const auto &entry : VideoFormatExtractor::instance().getVideoQualitiesOrderMap())
+	{
+		SendMessage(GetDlgItem(hwnd, IDC_DESIRED_QUALITY), CB_ADDSTRING, 0, (LPARAM) entry.second.c_str());
+	}
+
+	SendMessage(GetDlgItem(hwnd, IDC_DESIRED_QUALITY), CB_SETCURSEL, selectedItem, 0);
+
 	return FALSE;
 }
 
 static BOOL amptube_Config_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD code)
 {
-	wchar_t buffer[MAX_PATH];
-
 	switch (ctrlId)
 	{
 	case IDC_BROWSE_PATH:
-		//TODO: Show a Browse for folder dialog and set it as the content of the cache path edit field
+	{
+		std::wstring newPath = SelectFoler(PluginProperties::instance().getProperty(L"cachePath"));
+		if (!newPath.empty())
+			SetWindowText(GetDlgItem(hwnd, IDC_CACHE_PATH), newPath.c_str());
+
 		return TRUE;
+	}
 
 	case IDC_CLEAR_CACHE:
-		//TODO: Remove all .mp4, .jpg and .flv files in the current cache path
+	{
+		boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
+		boost::filesystem::directory_iterator end;
+		for (boost::filesystem::directory_iterator it(cachePath); it != end; ++it)
+		{
+			remove_all(it->path());
+		}
+
+		EnableWindow(GetDlgItem(hwnd, IDC_CLEAR_CACHE), FALSE);
 		return TRUE;
+	}
 
 	case IDOK:
+	{
+		wchar_t buffer[MAX_PATH];
 		GetWindowText(GetDlgItem(hwnd, IDC_CACHE_PATH), buffer, MAX_PATH);
+		int selectedItem = SendMessage(GetDlgItem(hwnd, IDC_DESIRED_QUALITY), CB_GETCURSEL, 0, 0);
 		PluginProperties::instance().setProperty(L"cachePath", buffer);
+		PluginProperties::instance().setProperty(L"desiredQuality", std::to_wstring(selectedItem));
 		DestroyWindow(hwnd);
 		return TRUE;
+	}
 
 	case IDCANCEL:
 		DestroyWindow(hwnd);

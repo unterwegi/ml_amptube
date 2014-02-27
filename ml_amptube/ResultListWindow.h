@@ -61,6 +61,9 @@ private:
 	int _thumbnailPadding;
 	int _thumbnailWidth, _thumbnailHeight;
 	int _textStartXPos;
+	int _textHeight;
+	int _titleYPos;
+	int _progressYPos;
 
 	VideoContainer _results;
 	ThumbnailMap _thumbnails;

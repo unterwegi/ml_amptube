@@ -1,5 +1,4 @@
 #pragma once
-#include "VideoFormatExtractor.h"
 #include "PluginProperties.h"
 
 class VideoDescription
