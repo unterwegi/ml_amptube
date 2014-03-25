@@ -1,5 +1,6 @@
 #pragma once
 #include "VideoDescription.h"
+#include "ManualResetEvent.h"
 
 ///<summary>
 /// Handles all HTTP related functionality. Uses the singleton pattern.</summary>
@@ -19,8 +20,8 @@ public:
 	~HttpHandler(){}
 
 	void cancelAsyncTasks() const;
-	pplx::cancellation_token getCancellationToken() const;
-
+	std::shared_ptr<ManualResetEvent> getCancelEvent() const;
+	
 	///<summary>
 	/// Performs an asynchronous search and calls the supplied callback when the search is done.</summary>
 	///<param name="query"> The search query.</param>
@@ -43,13 +44,13 @@ private:
 	static std::wstring _searchUrl;
 	static size_t _downloadChunkSize;
 
-	pplx::cancellation_token_source _cancellationToken;
-
 	std::deque<pplx::task<void>> _activeDownloads;
+
+	std::shared_ptr<ManualResetEvent> _cancelEvent;
 
 	///<summary>
 	/// Private constructor. Needed for proper singleton.</summary>
-	HttpHandler() {}
+	HttpHandler() : _cancelEvent(std::shared_ptr<ManualResetEvent>(new ManualResetEvent)) {}
 
 	///<summary>
 	/// Private copy constructor. Needed for proper singleton.</summary>

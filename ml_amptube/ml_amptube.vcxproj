@@ -90,6 +90,7 @@
   <ItemGroup>
     <ClInclude Include="HttpHandler.h" />
     <ClInclude Include="jpgd.h" />
+    <ClInclude Include="ManualResetEvent.h" />
     <ClInclude Include="ml_amptube.h" />
     <ClInclude Include="PluginProperties.h" />
     <ClInclude Include="plugin_view.h" />

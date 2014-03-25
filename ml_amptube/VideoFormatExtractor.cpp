@@ -84,12 +84,15 @@ bool VideoFormatExtractor::startDownload(const VideoDescription &video,
 
 VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(const std::wstring &videoId) const
 {
-	auto cancelToken = HttpHandler::instance().getCancellationToken();
+	auto cancelEvent = HttpHandler::instance().getCancelEvent();
 	VideoFormatExtractor::VideoFormatMap formatMap;
 
 	HttpHandler::instance().getRemoteData(_watchUri + videoId).then([&]
 		(web::http::http_response response)
 	{
+		if (cancelEvent->wait(0))
+			pplx::cancel_current_task();
+
 		std::wstring responseBody = response.extract_string().get();
 		boost::wregex videoFormatRegex(L"\"url_encoded_fmt_stream_map\":\\s*\"([^\"]+)\"", boost::regex_constants::perl);
 		boost::wregex videoAdaptFormatRegex(L"\"adaptive_fmts\":\\s*\"([^\"]+)\"", boost::regex_constants::perl);
@@ -116,6 +119,9 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 			if (scriptUrl.find(L"//") == 0)
 				scriptUrl = L"https:" + scriptUrl;
 		}
+
+		if (cancelEvent->wait(0))
+			pplx::cancel_current_task();
 
 		//Start the formats parsing
 		//Determine the used separators
@@ -171,13 +177,16 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 				else if (formatValues.find(L"s") != formatValues.end())
 					url.append(L"&signature=").append(decryptSignature(formatValues[L"s"], scriptUrl));
 
+				if (cancelEvent->wait(0))
+					pplx::cancel_current_task();
+
 				if (!boost::icontains(url, L"ratebypass"))
 					url.append(L"&ratebypass=yes");
 
 				formatMap[itag] = url;
 			}
 		}
-	}, cancelToken).wait();
+	}).wait();
 
 	return formatMap;
 }
@@ -185,13 +194,17 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const
 {
 	if (encSignature.empty() || signatureScriptUrl.empty()) return L"";
-	
+
+	auto cancelEvent = HttpHandler::instance().getCancelEvent();
 	std::vector<int> decodeArray;
 	std::size_t signatureLength = 81;
 
 	HttpHandler::instance().getRemoteData(signatureScriptUrl).then([&]
 		(web::http::http_response response)
 	{
+		if (cancelEvent->wait(0))
+			pplx::cancel_current_task();
+
 		std::wstring scriptCode = response.extract_string().get();
 		
 		boost::wregex functionNameRegex(L"\\.signature\\s*=\\s*(\\w+)\\(\\w+\\)", boost::regex_constants::perl);
@@ -219,6 +232,9 @@ std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSigna
 				boost::iter_split(codePieces, functionCode, boost::first_finder(L";"));
 				for (std::size_t i = 0; i < codePieces.size(); ++i)
 				{
+					if (cancelEvent->wait(0))
+						pplx::cancel_current_task();
+
 					boost::trim(codePieces[i]);
 					if (!codePieces[i].empty())
 					{

@@ -54,6 +54,9 @@
     <ClInclude Include="VideoFormatParseException.h">
       <Filter>Headerdateien</Filter>
     </ClInclude>
+    <ClInclude Include="ManualResetEvent.h">
+      <Filter>Headerdateien</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
