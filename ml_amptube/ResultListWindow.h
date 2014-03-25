@@ -24,7 +24,7 @@ public:
 	int getCurrentPage() const;
 	void clearList();
 
-	void playSelectedItems();
+	void addSelectedItemsToPlaylist();
 private:
 	struct ThumbnailData
 	{

@@ -17,6 +17,7 @@
 #include <codecvt>
 #include <algorithm>
 #include <future>
+#include <set>
 
 // C++ REST SDK Headers
 #include <cpprest/http_client.h>

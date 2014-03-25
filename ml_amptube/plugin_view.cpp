@@ -98,10 +98,10 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 
 	/* skin play options button */
 	sw.skinType = SKINNEDWND_TYPE_BUTTON;
-	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT | SWBS_SPLITBUTTON;
-	sw.hwndToSkin = GetDlgItem(hwnd, IDC_PLAY_OPTIONS);
+	sw.style = SWS_USESKINCOLORS | SWS_USESKINCURSORS | SWS_USESKINFONT;
+	sw.hwndToSkin = GetDlgItem(hwnd, IDC_ADD_TO_PLAYLIST);
 	MLSkinWindow(Plugin.hwndLibraryParent, &sw);
-	SetWindowText(sw.hwndToSkin, GetLocalString(IDS_PLAY).c_str());
+	SetWindowText(sw.hwndToSkin, GetLocalString(IDS_ADD_TO_PLAYLIST).c_str());
 
 	/* skin previous results button */
 	sw.skinType = SKINNEDWND_TYPE_BUTTON;
@@ -122,9 +122,9 @@ static BOOL amptube_View_OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	SetWindowPos(resultList, GetDlgItem(hwnd, IDC_CLEAR),
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	SetWindowPos(GetDlgItem(hwnd, IDC_PLAY_OPTIONS), resultList,
+	SetWindowPos(GetDlgItem(hwnd, IDC_ADD_TO_PLAYLIST), resultList,
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
-	SetWindowPos(GetDlgItem(hwnd, IDC_PREV_RESULTS), GetDlgItem(hwnd, IDC_PLAY_OPTIONS),
+	SetWindowPos(GetDlgItem(hwnd, IDC_PREV_RESULTS), GetDlgItem(hwnd, IDC_ADD_TO_PLAYLIST),
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
 	SetWindowPos(GetDlgItem(hwnd, IDC_NEXT_RESULTS), GetDlgItem(hwnd, IDC_PREV_RESULTS),
 		0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
@@ -152,7 +152,7 @@ static BOOL amptube_View_OnSize(HWND hwnd, UINT state, int cx, int cy)
 			SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
 
 		/* move the play options button to the bottom edge*/
-		buttonHwnd = GetDlgItem(hwnd, IDC_PLAY_OPTIONS);
+		buttonHwnd = GetDlgItem(hwnd, IDC_ADD_TO_PLAYLIST);
 		GetWindowRect(buttonHwnd, &buttonRect);
 		MapWindowPoints(0, hwnd, (LPPOINT)&buttonRect, 2);
 		int buttonHeight = buttonRect.bottom - buttonRect.top;
@@ -204,8 +204,8 @@ static BOOL amptube_View_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD c
 		resultList.clearList();
 		return TRUE;
 
-	case IDC_PLAY_OPTIONS:
-		resultList.playSelectedItems();
+	case IDC_ADD_TO_PLAYLIST:
+		resultList.addSelectedItemsToPlaylist();
 		return TRUE;
 
 	case IDC_PREV_RESULTS:

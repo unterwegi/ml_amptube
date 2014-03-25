@@ -14,9 +14,9 @@ public:
 		FormatDescription(std::wstring containerName, int qualityId, bool usesDash)
 			: _containerName(containerName), _qualityId(qualityId), _usesDash(usesDash) {}
 
-		std::wstring getContainerName(){ return _containerName; }
-		int getQualityId(){ return _qualityId; }
-		bool isDash(){ return _usesDash; }
+		std::wstring getContainerName() const { return _containerName; }
+		int getQualityId() const { return _qualityId; }
+		bool isDash() const { return _usesDash; }
 
 		std::wstring toString(const VideoQualityOrderMap &videoQualities)
 		{
@@ -34,6 +34,8 @@ public:
 	typedef std::map<int, std::wstring>			VideoFormatMap;
 	typedef VideoFormatMap::value_type			VideoFormatPair;
 
+	typedef std::set<std::wstring>				ExtensionsList;
+
 	///<summary>
 	/// Returns a reference to the static class instance.</summary>
 	///<returns>
@@ -44,13 +46,15 @@ public:
 		return _instance;
 	}
 
-	VideoQualityOrderMap getVideoQualitiesOrderMap() { return _videoQualityOrderMap; }
-	int getDefaultDesiredQuality() { return _defaultDesiredQuality; }
-	FormatDescriptionMap getFormatDescriptionMap() { return _formatDescriptionMap; }
+	VideoQualityOrderMap getVideoQualitiesOrderMap() const { return _videoQualityOrderMap; }
+	int getDefaultDesiredQuality() const { return _defaultDesiredQuality; }
+	FormatDescriptionMap getFormatDescriptionMap() const { return _formatDescriptionMap; }
+
+	ExtensionsList getAvailableExtensions() const;
 
 	~VideoFormatExtractor(){}
 
-	bool startDownload(const VideoDescription &video, 
+	std::wstring startDownload(const VideoDescription &video, 
 		std::function<void(std::wstring videoId, int progress, bool finished)> progressChanged) const;
 private:
 	static VideoQualityOrderMap _videoQualityOrderMap;

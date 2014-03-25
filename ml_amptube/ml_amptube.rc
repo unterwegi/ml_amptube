@@ -25,17 +25,17 @@ BEGIN
 	WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
 	0, 1, 71, 11
 
-	CONTROL "Play", IDC_PLAY_OPTIONS, "Button",
+	CONTROL "Add to Playlist", IDC_ADD_TO_PLAYLIST, "Button",
 	WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-	1, 0, 60, 11
+	1, 0, 90, 11
 
 	CONTROL "<<", IDC_PREV_RESULTS, "Button",
 	WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-	64, 0, 20, 11
+	94, 0, 20, 11
 
 	CONTROL ">>", IDC_NEXT_RESULTS, "Button",
 	WS_VISIBLE | WS_TABSTOP | BS_OWNERDRAW,
-	87, 0, 20, 11
+	117, 0, 20, 11
 END
 
 /////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ STRINGTABLE
 LANGUAGE LANG_ENGLISH, SUBLANG_NEUTRAL
 BEGIN
 IDS_SEARCH					L"Search:"
-IDS_PLAY					L"Play"
+IDS_ADD_TO_PLAYLIST			L"Add to Playlist"
 IDS_CLEAR_SEARCH			L"Clear Search"
 IDS_FORMAT_EXTRACT_ERROR	L"An error occured during retrieval of the available video formats: "
 END
@@ -85,7 +85,7 @@ STRINGTABLE
 LANGUAGE LANG_GERMAN, SUBLANG_NEUTRAL
 BEGIN
 IDS_SEARCH					L"Suche:"
-IDS_PLAY					L"Abspielen"
+IDS_ADD_TO_PLAYLIST			L"Zur Playlist hinzufügen"
 IDS_CLEAR_SEARCH			L"Suche löschen"
 IDS_FORMAT_EXTRACT_ERROR	L"Während der Abfrage der verfügbaren Videoformate ist ein Fehler aufgetreten: "
 END

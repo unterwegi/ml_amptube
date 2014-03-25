@@ -26,6 +26,21 @@ VideoFormatExtractor::FormatDescriptionMap VideoFormatExtractor::_formatDescript
 
 std::wstring VideoFormatExtractor::_watchUri = L"https://www.youtube.com/watch?v=";
 
+VideoFormatExtractor::ExtensionsList VideoFormatExtractor::getAvailableExtensions() const
+{
+	VideoFormatExtractor::ExtensionsList extensions;
+
+	for (const auto &format : _formatDescriptionMap)
+	{
+		std::wstring extension = format.second.getContainerName();
+		std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
+
+		extensions.insert(extension);
+	}
+
+	return extensions;
+}
+
 int VideoFormatExtractor::getDownloadFormatId(const VideoFormatExtractor::VideoFormatMap &formats,
 	int desiredQualityId, bool withDash) const
 {
@@ -48,9 +63,11 @@ int VideoFormatExtractor::getDownloadFormatId(const VideoFormatExtractor::VideoF
 	return formatId;
 }
 
-bool VideoFormatExtractor::startDownload(const VideoDescription &video,
+std::wstring VideoFormatExtractor::startDownload(const VideoDescription &video,
 	std::function<void(std::wstring videoId, int progress, bool finished)> progressChanged) const
 {
+	std::wstring filePath;
+
 	auto formats = getVideoFormatMap(video.getId());
 
 	if (!formats.empty())
@@ -67,18 +84,17 @@ bool VideoFormatExtractor::startDownload(const VideoDescription &video,
 			std::wstring extension = L"." + formatDesc->second.getContainerName();
 			std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
 
-			HttpHandler::instance().startAsyncDownload(downloadUri,
-				PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
+			filePath = PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension;
+
+			HttpHandler::instance().startAsyncDownload(downloadUri, filePath,
 				[=](int progress, bool finished)
 			{
 				progressChanged(video.getId(), progress, finished);
 			});
-
-			return true;
 		}
 	}
 
-	return false;
+	return filePath;
 }
 
 

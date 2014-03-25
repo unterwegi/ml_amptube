@@ -16,7 +16,7 @@ public:
 	std::wstring getThumbnailUri() const { return _thumbnailUri; }
 	int getDownloadPercent() const { return _downloadPercent;  }
 	void setDownloadPercent(int percent) { _downloadPercent = percent; }
-	bool isCached() const;
+	std::wstring getPath() const;
 private:
 	std::wstring _id;
 	std::wstring _title;

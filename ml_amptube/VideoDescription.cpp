@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "VideoDescription.h"
+#include "VideoFormatExtractor.h"
 
 VideoDescription::VideoDescription(const web::json::value &input)
 {
@@ -19,21 +20,34 @@ VideoDescription::VideoDescription(const web::json::value &input)
 	_downloadPercent = -1;
 }
 
-bool VideoDescription::isCached() const
+std::wstring VideoDescription::getPath() const
 {
+	std::wstring filePath;
+
+	auto extensions = VideoFormatExtractor::instance().getAvailableExtensions();
 	boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
 	boost::filesystem::directory_iterator end;
 
 	for (boost::filesystem::directory_iterator iter(cachePath); iter != end; ++iter)
 	{
-		if (!boost::filesystem::is_directory(iter->path())
-			&& (iter->path().filename() == _id + L".flv"
-			|| iter->path().extension() == _id + L".mp4"))
+		std::wstring filename = iter->path().filename().wstring();
+
+		if (!boost::filesystem::is_directory(iter->path()))
 		{
-			return true;
+			for (const auto &extension : extensions)
+			{
+				if (filename == _id + L"." + extension)
+				{
+					filePath = iter->path().wstring();
+					break;
+				}
+			}
 		}
+
+		if (!filePath.empty())
+			break;
 	}
 	
-	return false;
+	return filePath;
 }
 

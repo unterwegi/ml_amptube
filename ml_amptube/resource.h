@@ -5,7 +5,7 @@
 #define IDC_LIST					1001
 #define IDC_CLEAR					1002
 #define IDC_SEARCH					1003
-#define IDC_PLAY_OPTIONS			1004
+#define IDC_ADD_TO_PLAYLIST			1004
 #define IDC_PREV_RESULTS			1005
 #define IDC_NEXT_RESULTS			1006
 
@@ -18,6 +18,6 @@
 
 //String Table IDs
 #define IDS_SEARCH					3001
-#define IDS_PLAY					3002
+#define IDS_ADD_TO_PLAYLIST			3002
 #define IDS_CLEAR_SEARCH			3003
 #define IDS_FORMAT_EXTRACT_ERROR	3004

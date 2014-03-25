@@ -206,17 +206,20 @@ void ResultListWindow::clearList()
 	setVScrollBarInfo();
 }
 
-void ResultListWindow::playSelectedItems()
+void ResultListWindow::addSelectedItemsToPlaylist()
 {
 	if (_selectedItemIdx != INT_MAX && !_results.empty())
 	{
 		auto &video = _results.at(_selectedItemIdx);
 
-		if (!video.isCached())
+		std::wstring title = video.getTitle();
+		std::wstring filePath = video.getPath();
+
+		if (filePath.empty())
 		{
 			try
 			{
-				VideoFormatExtractor::instance().startDownload(video,
+				filePath = VideoFormatExtractor::instance().startDownload(video,
 					[this](std::wstring videoId, int progress, bool finished)
 				{
 					for (auto &video : _results)
@@ -242,7 +245,22 @@ void ResultListWindow::playSelectedItems()
 			}
 		}
 
-		//TODO: Put the videos into Winamps playlist
+		enqueueFileWithMetaStructW enqueueData = { 0 };
+		enqueueData.filename = filePath.c_str();
+		enqueueData.title = title.c_str();
+		enqueueData.length = video.getDuration();
+
+		extendedFileInfoStructW fileInfoStruct = { 0 };
+		fileInfoStruct.filename = filePath.c_str();
+		fileInfoStruct.metadata = L"title";
+		fileInfoStruct.ret = const_cast<wchar_t *> (title.c_str());
+		
+		//TODO: find out how to tell winamp which text it should display for an item in the playlist
+		//This methods return with an error
+		int result = SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, (WPARAM)&fileInfoStruct, IPC_SET_EXTENDED_FILE_INFOW);
+		result = SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, 0, IPC_WRITE_EXTENDED_FILE_INFO);
+
+		SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, (WPARAM)&enqueueData, IPC_ENQUEUEFILEW);
 	}
 }
 
@@ -446,7 +464,15 @@ void ResultListWindow::onLMouseButtonUp(WORD keys, POINT &cursorPos)
 
 void ResultListWindow::onLMouseButtonDblClk(WORD keys, POINT &cursorPos)
 {
+	SizeType oldSelection = _selectedItemIdx;
+	_selectedItemIdx = getItemIdxForPosition(cursorPos);
 
+	if (SetFocus(_hwnd) == _hwnd && oldSelection != _selectedItemIdx)
+	{
+		triggerRedraw();
+	}
+
+	addSelectedItemsToPlaylist();
 }
 
 void ResultListWindow::onKeyDown(DWORD vKey)
