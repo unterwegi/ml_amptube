@@ -18,6 +18,9 @@ public:
 
 	~HttpHandler(){}
 
+	void cancelAsyncTasks() const;
+	pplx::cancellation_token getCancellationToken() const;
+
 	///<summary>
 	/// Performs an asynchronous search and calls the supplied callback when the search is done.</summary>
 	///<param name="query"> The search query.</param>
@@ -31,7 +34,7 @@ public:
 		std::function<void(const std::wstring &videoId, const std::string &data)> thumbnailReady) const;
 
 	void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring &fileName,
-		std::function<void(int progress, bool finished)> progressChanged) const;
+		std::function<void(int progress, bool finished)> progressChanged);
 
 	pplx::task<web::http::http_response> getRemoteData(const std::wstring &uri) const;
 private:
@@ -39,6 +42,10 @@ private:
 	/// The base URL for search operations</summary>
 	static std::wstring _searchUrl;
 	static size_t _downloadChunkSize;
+
+	pplx::cancellation_token_source _cancellationToken;
+
+	std::deque<pplx::task<void>> _activeDownloads;
 
 	///<summary>
 	/// Private constructor. Needed for proper singleton.</summary>

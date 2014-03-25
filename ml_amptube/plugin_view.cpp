@@ -362,7 +362,9 @@ static BOOL amptube_Config_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD
 		boost::filesystem::directory_iterator end;
 		for (boost::filesystem::directory_iterator it(cachePath); it != end; ++it)
 		{
-			remove_all(it->path());
+			//remove all files and folders in the cache path except files having the extension .incomplete (active downloads)
+			if (!(it->path().extension() == ".incomplete"))
+				remove_all(it->path());
 		}
 
 		EnableWindow(GetDlgItem(hwnd, IDC_CLEAR_CACHE), FALSE);

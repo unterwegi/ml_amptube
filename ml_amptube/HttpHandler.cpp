@@ -4,9 +4,25 @@
 std::wstring HttpHandler::_searchUrl = L"https://gdata.youtube.com/"; //URL to Youtube Search API
 size_t HttpHandler::_downloadChunkSize = 512 * 1024; // 512 KB chunk size
 
+void HttpHandler::cancelAsyncTasks() const
+{
+	_cancellationToken.cancel();
+	for (const auto &task : _activeDownloads)
+	{
+		task.wait();
+	}
+}
+
+pplx::cancellation_token HttpHandler::getCancellationToken() const
+{
+	return _cancellationToken.get_token();
+}
+
 void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 	std::function<void(const VideoContainer &results)> finished) const
 {
+	auto cancelToken = _cancellationToken.get_token();
+
 	//Call the callback function with an empty result container if the query is empty
 	if (query.empty())
 		finished(VideoContainer());
@@ -24,6 +40,8 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 		client.request(web::http::methods::GET, web::http::uri::encode_uri(requestUri)).then([=](
 			web::http::http_response response)
 		{
+			if (cancelToken.is_canceled())
+				pplx::cancel_current_task();
 
 			if (response.status_code() == web::http::status_codes::OK)
 			{
@@ -39,52 +57,63 @@ void HttpHandler::doSearch(const std::wstring &query, int page, int maxResults,
 					}
 
 					finished(videos);
-				});
+				}, _cancellationToken.get_token());
 			}
-		});
+		}, cancelToken);
 	}
 }
 
 pplx::task<void> HttpHandler::retrieveThumbnails(const VideoContainer &videos,
 	std::function<void(const std::wstring &videoId, const std::string &data)> thumbnailReady) const
 {
+	auto cancelToken = _cancellationToken.get_token();
+
 	return pplx::create_task([=]() -> void
 	{
 		for (const auto &video : videos)
 		{
+			if (cancelToken.is_canceled())
+				pplx::cancel_current_task();
+
 			if (!video.getThumbnailUri().empty())
 			{
 				getRemoteData(video.getThumbnailUri()).then([=](
 					web::http::http_response response)
 				{
+					if (cancelToken.is_canceled())
+						pplx::cancel_current_task();
+
 					if (response.status_code() == web::http::status_codes::OK)
 					{
 						concurrency::streams::container_buffer<std::string> buffer;
 						response.body().read_to_end(buffer).wait();
 						thumbnailReady(video.getId(), buffer.collection());
 					}
-				}).wait();				
+				}, cancelToken).wait();
 			}
 		}
 	});
 }
 
 void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring &fileName,
-	std::function<void(int progress, bool finished)> progressChanged) const
+	std::function<void(int progress, bool finished)> progressChanged)
 {
-	//TODO: Add support for cancelations
+	auto cancelToken = _cancellationToken.get_token();
 	
 	//file name for the target file during the download (.incomplete appended to fileName)
 	std::wstring fileNameIncomplete = fileName + L".incomplete";
 
 	// Open a stream to the file to write the remote data to
 	auto fileBuffer = std::make_shared<pplx::streams::streambuf<uint8_t>>();
-	pplx::streams::file_buffer<uint8_t>::open(fileNameIncomplete, std::ios::out).then([=](
+	auto task = pplx::streams::file_buffer<uint8_t>::open(fileNameIncomplete, std::ios::out).then([=](
 		pplx::streams::streambuf<uint8_t> outFile) -> pplx::task<web::http::http_response>
 	{
+		if (cancelToken.is_canceled())
+			pplx::cancel_current_task();
+
 		*fileBuffer = outFile;
 		return getRemoteData(uri);
-	})
+	}, cancelToken)
 	// Write the response body stream into the file buffer.
 	.then([=](web::http::http_response response)
 	{
@@ -96,24 +125,39 @@ void HttpHandler::startAsyncDownload(const std::wstring &uri, const std::wstring
 
 			while (totalBytesRead < contentLength)
 			{
+				if (cancelToken.is_canceled())
+					pplx::cancel_current_task();
+
 				size_t bytesRead = response.body().read(*fileBuffer, _downloadChunkSize).get();
 				if (bytesRead == 0)
 					break;
 
-				totalBytesRead += bytesRead;
+				totalBytesRead += bytesRead	;
 
 				int percent = (int) (((double)totalBytesRead / (double)contentLength) * 100);
 				if (percent != oldPercent)
 					progressChanged(percent, false);
 			}
 		}
-	})
+	}, cancelToken)
 	// Close the file buffer and remove the .incomplete suffix from the file
 	.then([=]
 	{
 		fileBuffer->close().wait();
+		if (cancelToken.is_canceled())
+			pplx::cancel_current_task();
+
 		boost::filesystem::rename(fileNameIncomplete, fileName);
 		progressChanged(100, true);
+	}, cancelToken);
+
+	_activeDownloads.push_back(task);
+
+	task.then([this, task]
+	{
+		auto iter = std::find(_activeDownloads.begin(), _activeDownloads.end(), task);
+		if (iter != _activeDownloads.end())
+			_activeDownloads.erase(iter);
 	});
 }
 

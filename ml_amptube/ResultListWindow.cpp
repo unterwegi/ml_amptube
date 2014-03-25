@@ -211,19 +211,27 @@ void ResultListWindow::playSelectedItems()
 	if (_selectedItemIdx != INT_MAX && !_results.empty())
 	{
 		auto &video = _results.at(_selectedItemIdx);
+
 		if (!video.isCached())
 		{
 			try
 			{
 				VideoFormatExtractor::instance().startDownload(video,
-					[&](int progress, bool finished)
+					[this](std::wstring videoId, int progress, bool finished)
 				{
-					if (!finished)
-						video.setDownloadPercent(progress);
-					else
-						video.setDownloadPercent(-1);
+					for (auto &video : _results)
+					{
+						if (video.getId() == videoId)
+						{
+							if (!finished)
+								video.setDownloadPercent(progress);
+							else
+								video.setDownloadPercent(-1);
 
-					triggerRedraw();
+							triggerRedraw();
+							break;
+						}
+					}
 				});
 			}
 			catch (VideoFormatParseException &e)

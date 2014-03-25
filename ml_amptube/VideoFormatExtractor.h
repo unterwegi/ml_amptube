@@ -51,7 +51,7 @@ public:
 	~VideoFormatExtractor(){}
 
 	bool startDownload(const VideoDescription &video, 
-		std::function<void(int progress, bool finished)> progressChanged) const;
+		std::function<void(std::wstring videoId, int progress, bool finished)> progressChanged) const;
 private:
 	static VideoQualityOrderMap _videoQualityOrderMap;
 	static FormatDescriptionMap _formatDescriptionMap;

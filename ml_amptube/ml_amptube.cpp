@@ -55,6 +55,16 @@ int Init()
 
 void Quit()
 {
+	HttpHandler::instance().cancelAsyncTasks();
+
+	// Remove all .incomplete files for canceled downloads in the cache path when winamp is closed
+	boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
+	boost::filesystem::directory_iterator end;
+	for (boost::filesystem::directory_iterator it(cachePath); it != end; ++it)
+	{
+		if (boost::filesystem::is_regular_file(it->path()) && it->path().extension() == ".incomplete")
+			remove_all(it->path());
+	}
 }
 
 INT_PTR PluginMessageProc(int message_type, INT_PTR param1, INT_PTR param2, INT_PTR param3)

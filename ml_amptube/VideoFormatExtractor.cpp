@@ -49,7 +49,7 @@ int VideoFormatExtractor::getDownloadFormatId(const VideoFormatExtractor::VideoF
 }
 
 bool VideoFormatExtractor::startDownload(const VideoDescription &video,
-	std::function<void(int progress, bool finished)> progressChanged) const
+	std::function<void(std::wstring videoId, int progress, bool finished)> progressChanged) const
 {
 	auto formats = getVideoFormatMap(video.getId());
 
@@ -69,7 +69,10 @@ bool VideoFormatExtractor::startDownload(const VideoDescription &video,
 
 			HttpHandler::instance().startAsyncDownload(downloadUri,
 				PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension,
-				progressChanged);
+				[=](int progress, bool finished)
+			{
+				progressChanged(video.getId(), progress, finished);
+			});
 
 			return true;
 		}
@@ -81,6 +84,7 @@ bool VideoFormatExtractor::startDownload(const VideoDescription &video,
 
 VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(const std::wstring &videoId) const
 {
+	auto cancelToken = HttpHandler::instance().getCancellationToken();
 	VideoFormatExtractor::VideoFormatMap formatMap;
 
 	HttpHandler::instance().getRemoteData(_watchUri + videoId).then([&]
@@ -173,7 +177,7 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 				formatMap[itag] = url;
 			}
 		}
-	}).wait();
+	}, cancelToken).wait();
 
 	return formatMap;
 }
@@ -292,6 +296,7 @@ std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSigna
 	if (encSignature.length() == signatureLength && !decodeArray.empty())
 	{
 		std::vector<wchar_t> sigArray;
+		sigArray.resize(encSignature.length());
 		std::copy(encSignature.begin(), encSignature.end(), sigArray.begin());
 
 		for (const auto &act : decodeArray)
