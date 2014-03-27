@@ -41,6 +41,10 @@ int Init()
 	if (langName == L"de")
 		StringLang = MAKELANGID(LANG_GERMAN, SUBLANG_NEUTRAL);
 
+	//create the cache path folder if it does not exist
+	boost::filesystem::path cachePath(PluginProperties::instance().getProperty(L"cachePath"));
+	boost::filesystem::create_directories(cachePath);
+
 	//set up tree item, gen_ml will call amptube_pluginMessageProc if/when the treeview item gets selected
 	MLTREEITEMW newTree;
 	newTree.size = sizeof(MLTREEITEMW);

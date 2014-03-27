@@ -378,6 +378,11 @@ static BOOL amptube_Config_OnCommand(HWND hwnd, HWND ctrlHwnd, WORD ctrlId, WORD
 		int selectedItem = SendMessage(GetDlgItem(hwnd, IDC_DESIRED_QUALITY), CB_GETCURSEL, 0, 0);
 		PluginProperties::instance().setProperty(L"cachePath", buffer);
 		PluginProperties::instance().setProperty(L"desiredQuality", std::to_wstring(selectedItem));
+
+		//create the cache path folder if it does not exist
+		boost::filesystem::path cachePath(buffer);
+		boost::filesystem::create_directories(cachePath);
+
 		DestroyWindow(hwnd);
 		return TRUE;
 	}

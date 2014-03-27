@@ -212,7 +212,6 @@ void ResultListWindow::addSelectedItemsToPlaylist()
 	{
 		auto &video = _results.at(_selectedItemIdx);
 
-		std::wstring title = video.getTitle();
 		std::wstring filePath = video.getPath();
 
 		if (filePath.empty())
@@ -242,25 +241,19 @@ void ResultListWindow::addSelectedItemsToPlaylist()
 				MessageBox(_hwndParent, 
 					(GetLocalString(IDS_FORMAT_EXTRACT_ERROR) + L"\n\n" + e.getReason()).c_str(),
 					L"", MB_OK | MB_ICONERROR);
+				return;
 			}
 		}
 
+		std::wstring title = video.getTitle();
 		enqueueFileWithMetaStructW enqueueData = { 0 };
 		enqueueData.filename = filePath.c_str();
 		enqueueData.title = title.c_str();
 		enqueueData.length = video.getDuration();
 
-		extendedFileInfoStructW fileInfoStruct = { 0 };
-		fileInfoStruct.filename = filePath.c_str();
-		fileInfoStruct.metadata = L"title";
-		fileInfoStruct.ret = const_cast<wchar_t *> (title.c_str());
-		
-		//TODO: find out how to tell winamp which text it should display for an item in the playlist
-		//This methods return with an error
-		int result = SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, (WPARAM)&fileInfoStruct, IPC_SET_EXTENDED_FILE_INFOW);
-		result = SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, 0, IPC_WRITE_EXTENDED_FILE_INFO);
-
 		SendMessage(Plugin.hwndWinampParent, WM_WA_IPC, (WPARAM)&enqueueData, IPC_ENQUEUEFILEW);
+
+		//TODO: Figure out how to set the position of a file inside the playlist
 	}
 }
 

@@ -37,5 +37,6 @@
 #include <api/service/api_service.h>
 #include <api/service/waServiceFactory.h>
 #include <api/application/api_application.h>
+#include <ml_local/api_mldb.h>
 #include <Agave/Language/api_language.h>
 #include <bfc/dispatch.h>

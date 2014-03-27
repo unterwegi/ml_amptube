@@ -80,16 +80,40 @@ std::wstring VideoFormatExtractor::startDownload(const VideoDescription &video,
 
 		if (formatDesc != _formatDescriptionMap.end())
 		{
-			std::wstring downloadUri = formats.find(formatId)->second;
+			auto videoFormatInfo = formats.find(formatId)->second;
+
 			std::wstring extension = L"." + formatDesc->second.getContainerName();
 			std::transform(extension.begin(), extension.end(), extension.begin(), tolower);
 
 			filePath = PluginProperties::instance().getProperty(L"cachePath") + L"\\" + video.getId() + extension;
 
-			HttpHandler::instance().startAsyncDownload(downloadUri, filePath,
-				[=](int progress, bool finished)
+			pplx::create_task(
+				[this, filePath, videoFormatInfo, video, progressChanged]() -> void
 			{
-				progressChanged(video.getId(), progress, finished);
+				std::wstring downloadUri = getVideoDownloadUrl(videoFormatInfo);
+				HttpHandler::instance().startAsyncDownload(downloadUri, filePath,
+					[video, progressChanged](int progress, bool finished)
+				{
+					if (finished)
+					{
+						//Set the meta information of the video, so that the title is shown correctly in the playlist
+						waServiceFactory *factory = ServiceManager->service_getServiceByGuid(mldbApiGuid);
+						if (factory)
+						{
+							std::wstring title = video.getTitle();
+							std::wstring filePath = video.getPath();
+
+							api_mldb *mldb_api = (api_mldb *)factory->getInterface();
+							mldb_api->AddFile(filePath.c_str());
+							mldb_api->SetField(filePath.c_str(), "title", title.c_str());
+							mldb_api->SetField(filePath.c_str(), "artist", NULL);
+							mldb_api->SetField(filePath.c_str(), "album", NULL);
+							factory->Release();
+						}
+					}
+
+					progressChanged(video.getId(), progress, finished);
+				});
 			});
 		}
 	}
@@ -181,30 +205,54 @@ VideoFormatExtractor::VideoFormatMap VideoFormatExtractor::getVideoFormatMap(con
 
 				int itag = std::stoi(formatValues[L"itag"]);
 
-				std::wstring signature;
+				if (_formatDescriptionMap.find(itag) != _formatDescriptionMap.end())
+				{
+					std::wstring signature;
+					bool encodedSignature = false;
 
-				if (formatValues.find(L"sig") != formatValues.end())
-					signature = formatValues[L"sig"];
-				else if (formatValues.find(L"signature") != formatValues.end())
-					signature = formatValues[L"signature"];
+					if (formatValues.find(L"sig") != formatValues.end())
+						signature = formatValues[L"sig"];
+					else if (formatValues.find(L"signature") != formatValues.end())
+						signature = formatValues[L"signature"];
 
-				if (!signature.empty())
-					url.append(L"&signature=").append(signature);
-				else if (formatValues.find(L"s") != formatValues.end())
-					url.append(L"&signature=").append(decryptSignature(formatValues[L"s"], scriptUrl));
+					if (signature.empty())
+					{
+						if (formatValues.find(L"s") != formatValues.end())
+						{
+							encodedSignature = true;
+							signature = formatValues[L"s"];
+						}
+					}
 
-				if (cancelEvent->wait(0))
-					pplx::cancel_current_task();
-
-				if (!boost::icontains(url, L"ratebypass"))
-					url.append(L"&ratebypass=yes");
-
-				formatMap[itag] = url;
+					formatMap[itag] = VideoFormatInfo(url, signature, encodedSignature, scriptUrl);
+				}
 			}
 		}
 	}).wait();
 
 	return formatMap;
+}
+
+std::wstring VideoFormatExtractor::getVideoDownloadUrl(const VideoFormatExtractor::VideoFormatInfo &videoFormatInfo) const
+{
+	auto cancelEvent = HttpHandler::instance().getCancelEvent();
+	std::wstring url = videoFormatInfo.getUrl();
+
+	if (videoFormatInfo.IsEncoded())
+	{
+		url.append(L"&signature=").append(
+			decryptSignature(videoFormatInfo.getSignature(), videoFormatInfo.getScriptUrl()));
+	}
+	else
+		url.append(L"&signature=").append(videoFormatInfo.getSignature());
+
+	if (cancelEvent->wait(0))
+		pplx::cancel_current_task();
+
+	if (!boost::icontains(url, L"ratebypass"))
+		url.append(L"&ratebypass=yes");
+
+	return url;
 }
 
 std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const
@@ -347,7 +395,8 @@ std::wstring VideoFormatExtractor::decryptSignature(const std::wstring &encSigna
 				}
 				else
 				{
-					std::vector<wchar_t> bufArray(&sigArray[-act], &(*sigArray.end()));
+					auto startIter = sigArray.begin() + (-act);
+					std::vector<wchar_t> bufArray(startIter, sigArray.end());
 					sigArray = std::move(bufArray);
 				}
 			}

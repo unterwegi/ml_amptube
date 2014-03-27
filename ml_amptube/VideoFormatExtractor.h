@@ -11,7 +11,7 @@ public:
 	class FormatDescription
 	{
 	public:
-		FormatDescription(std::wstring containerName, int qualityId, bool usesDash)
+		FormatDescription(const std::wstring &containerName, int qualityId, bool usesDash)
 			: _containerName(containerName), _qualityId(qualityId), _usesDash(usesDash) {}
 
 		std::wstring getContainerName() const { return _containerName; }
@@ -29,10 +29,27 @@ public:
 		bool _usesDash;
 	};
 
-	typedef std::map<int, FormatDescription>	FormatDescriptionMap;	
+	typedef std::map<int, FormatDescription>	FormatDescriptionMap;
 
-	typedef std::map<int, std::wstring>			VideoFormatMap;
-	typedef VideoFormatMap::value_type			VideoFormatPair;
+	class VideoFormatInfo
+	{
+	public:
+		VideoFormatInfo() : _encoded(false) {}
+		VideoFormatInfo(const std::wstring &url, const std::wstring &signature, const bool encoded, const std::wstring &scriptUrl)
+			: _url(url), _signature(signature), _scriptUrl(scriptUrl) {}
+
+		std::wstring getUrl() const { return _url; }
+		std::wstring getSignature() const { return _signature; }
+		bool IsEncoded() const { return _encoded; }
+		std::wstring getScriptUrl() const { return _scriptUrl; }
+	private:
+		std::wstring _url;
+		std::wstring _signature;
+		bool _encoded;
+		std::wstring _scriptUrl;
+	};
+
+	typedef std::map<int, VideoFormatInfo>		VideoFormatMap;
 
 	typedef std::set<std::wstring>				ExtensionsList;
 
@@ -77,6 +94,7 @@ private:
 	VideoFormatMap getVideoFormatMap(const std::wstring &videoId) const;
 	int getDownloadFormatId(const VideoFormatMap &formats, int desiredQualityId, bool withDash) const;
 
+	std::wstring getVideoDownloadUrl(const VideoFormatInfo &videoFormatInfo) const;
 	std::wstring decryptSignature(const std::wstring &encSignature, const std::wstring &signatureScriptUrl) const;
 };
 
